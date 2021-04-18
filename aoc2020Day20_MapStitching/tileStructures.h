@@ -20,6 +20,10 @@ typedef struct {
     Edge sides[4];
 } Tile;
 
+#ifdef DEBUG
+static char const* const SIDE_STRING[4] = {"Top", "Right", "Bottom", "Left"};
+#endif
+
 typedef enum {
     Top, Right, Bottom, Left
 } Side;

@@ -46,7 +46,7 @@ _Bool hashMapMethod(construct3) (HashMap* map, double loadFactor, usize required
     map -> loadFactor = loadFactor;
     map -> shrinkFillLevel = 0;
     map -> minimumSize = (map -> size = minSize);
-    Bucket* contents = malloc(minSize * sizeof(Bucket));
+    Bucket* contents = aligned_alloc(_Alignof(Bucket), minSize * sizeof(Bucket));
     if (contents == NULL) {
         contents = calloc(minSize, sizeof(Bucket));
         if (contents == NULL) {
@@ -229,6 +229,7 @@ Bucket* hashMapMethod(__addItem) (HashMap* map, K* key, V* value, usize keyHash)
         } else {
             // hashmap is too full, empty the bucket and return null
             pointed -> hash = 0;
+            -- (map -> contentCount);
             return NULL;
         }
     }
@@ -316,8 +317,8 @@ _Bool hashMapMethod(__removeItem) (HashMap* map, K* key, usize keyHash) {
     #endif
                     // re-add the bucket
                     if (hashMapMethod(__addItem)(map, &(pointed -> key), &(pointed -> value), keyHash) == NULL) {
-                        fprintf(stderr, "alloc failure in __removeItem, faulting");
-                        fprintf(stderr, "%d", (*(int*)NULL) + 1);
+                        fprintf(stderr, "__removeItem failed to allocate space for the bucket it just removed, what?");
+                        return false;
                     }
                 }
                 ++index;

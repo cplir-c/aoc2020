@@ -19,7 +19,7 @@ bool vectorMethod(construct) (Vector* vector) {
     usize size = 4;
     vector -> size = 4;
     vector -> contentCount = 0;
-    E* contents = malloc(sizeof(E) * size);
+    E* contents = aligned_alloc(_Alignof(E), sizeof(E) * size);
     vector -> contents = contents;
     if (contents == NULL) {
         fprintf(stderr, "failed to allocate default size " EString " vector\n");
@@ -30,7 +30,7 @@ bool vectorMethod(construct) (Vector* vector) {
 bool vectorMethod(construct2) (Vector* vector, usize requiredSpots) {
     vector -> size = requiredSpots;
     vector -> contentCount = 0;
-    E* contents = malloc(sizeof(E) * requiredSpots);
+    E* contents = aligned_alloc(_Alignof(E), sizeof(E) * requiredSpots);
     vector -> contents = contents;
     if (contents == NULL) {
         fprintf(stderr, "failed to allocate %ld element " EString " vector, or %ld bytes\n", requiredSpots, requiredSpots * sizeof(E));
@@ -102,9 +102,13 @@ bool vectorMethod(__shrinkContents) (Vector* vector) {
 
 bool vectorMethod(trimToContents) (Vector* vector) {
     usize newSize = vector -> contentCount;
-    if ((vector -> size) == newSize) {
+    if ((vector -> size) <= newSize) {
         return true; // successfully changed nothing
     }
+    //if (newSize < 2) {
+    //    newSize = 2;
+    //}
+    newSize |= 2;
     E* contents = realloc(vector -> contents, newSize * sizeof(E));
     if (contents == NULL) {
         fprintf(stderr, "failed to shrink " EString " vector to its contents size of %lu elements\n", newSize);
@@ -130,6 +134,10 @@ bool vectorMethod(preallocateSpace) (Vector* vector, usize itemCount) {
 }
 bool vectorMethod(trimToSize) (Vector* vector, usize newSize) {
     usize oldSize = vector -> size;
+    //if (newSize < 2) {
+    //    newSize = 2;
+    //}
+    newSize |= 2;
     if (newSize > oldSize) {
         return false;
     } else if (newSize == oldSize) {
@@ -293,7 +301,6 @@ E* vectorMethod(setIndex) (Vector* vector, usize index, E* item) {
     *target = *item;
     return target;
 }
-
     #undef _TokenPaste
     #undef TokenPaste
     #undef Vector

@@ -3,12 +3,12 @@
 
 #include "tileStructures.h"
 #ifndef __TILE_MAPS_C
-    #define __TILE_MAPS_C
+    #define __TILE_MAPS_C 1
 
     #ifndef __TILE_MAPS_H
-        #define __TILE_MAPS_H
+        #define __TILE_MAPS_H 1
     #endif
-    
+
     #define E EdgeReference
         #include "genericVector.c"
     #undef E

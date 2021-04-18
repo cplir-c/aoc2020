@@ -6,6 +6,7 @@
     #define TokenPaste(pre, post) _TokenPaste(pre, post)
     #define Vector TokenPaste(E, Vector)
     #define vectorMethod(name) TokenPaste(name, Vector)
+    
 
 typedef struct {
     usize size;
