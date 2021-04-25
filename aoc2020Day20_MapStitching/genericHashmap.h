@@ -54,7 +54,7 @@ static usize nextHigherPowerOfTwo(double load);
 static usize spreadBits(usize in, fu8 twoPower);
 
     #ifdef DEBUG
-static usize hashMapMethod(printDebug)(HashMap* map, fu16 indentation, charVector* out);
+static usize hashMapMethod(printDebug)(charVector* out, fu16 indentation, HashMap* map);
     #endif
 
     #undef _TokenPaste

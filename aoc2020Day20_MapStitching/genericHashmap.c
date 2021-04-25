@@ -406,40 +406,41 @@ static usize spreadBits(usize in, fu8 twoPower) {
 extern usize printDebugKey(charVector* out, fu16 indentation, K* key);
 extern usize printDebugValue(charVector* out, fu16 indentation, V* value);
 
-static usize hashMapMethod(printDebug)(HashMap* map, fu16 indentation, charVector* out) {
-    usize hashMapMethod(printDebugHeader) () {
-        usize beginIndex = out -> contentCount;
-        appendLine(out, indentation, "%zn(" HashMapString ") {");
-        appendLine(out, indentation + 4, ".loadFactor = %f,");
-        appendLine(out, indentation + 4, ".growFillLevel = %zu,");
-        appendLine(out, indentation + 4, ".shinkFillLevel = %zu,");
-        appendLine(out, indentation + 4, ".contentCount = %zu,");
-        appendLine(out, indentation + 4, ".size = %lu,");
-        appendLine(out, indentation + 4, ".bucketMask = 0x%zx,");
-        appendLine(out, indentation + 4, ".minimumSize = %zu,");
-        appendLine(out, indentation + 4, ".sizeTwoPower = %hhu,");
-        appendChar(out, '\0');
-        usize formatSize = (out -> contentCount) - beginIndex;
-        char* destBlock = addBlockcharVector(out, 6 * formatSize);
-        // copy the format string to the end of the char vector
-        char* formatBlock = memcpy(destBlock + formatSize * 5, (out -> contents) + beginIndex, formatSize);
-        destBlock = (out -> contents) + beginIndex;
-        // format the hashmap header into place
-        usize written = 0;
-        sprintf(destBlock, formatBlock, &written,
-            map -> loadFactor,
-            map -> growFillLevel,
-            map -> shrinkFillLevel,
-            map -> contentCount,
-            map -> size,
-            map -> bucketMask,
-            map -> minimumSize,
-            map -> sizeTwoPower);
-        // remove the unused space
-        removeBlockcharVector(out, 7 * formatSize - written);
-        return written;
-    }
-    hashMapMethod(printDebugHeader)();
+usize hashMapMethod(printDebugHeader) (charVector* out, fu16 indentation, HashMap* map) {
+    usize beginIndex = out -> contentCount;
+    appendLine(out, indentation, "%zn(" HashMapString ") {");
+    appendLine(out, indentation + 4, ".loadFactor = %f,");
+    appendLine(out, indentation + 4, ".growFillLevel = %zu,");
+    appendLine(out, indentation + 4, ".shinkFillLevel = %zu,");
+    appendLine(out, indentation + 4, ".contentCount = %zu,");
+    appendLine(out, indentation + 4, ".size = %lu,");
+    appendLine(out, indentation + 4, ".bucketMask = 0x%zx,");
+    appendLine(out, indentation + 4, ".minimumSize = %zu,");
+    appendLine(out, indentation + 4, ".sizeTwoPower = %hhu,");
+    appendChar(out, '\0');
+    usize formatSize = (out -> contentCount) - beginIndex;
+    char* destBlock = addBlockcharVector(out, 6 * formatSize);
+    // copy the format string to the end of the char vector
+    char* formatBlock = memcpy(destBlock + formatSize * 5, (out -> contents) + beginIndex, formatSize);
+    destBlock = (out -> contents) + beginIndex;
+    // format the hashmap header into place
+    usize written = 0;
+    sprintf(destBlock, formatBlock, &written,
+        map -> loadFactor,
+        map -> growFillLevel,
+        map -> shrinkFillLevel,
+        map -> contentCount,
+        map -> size,
+        map -> bucketMask,
+        map -> minimumSize,
+        map -> sizeTwoPower);
+    // remove the unused space
+    removeBlockcharVector(out, 7 * formatSize - written);
+    return written;
+}
+static usize hashMapMethod(printDebug)(charVector* out, fu16 indentation, HashMap* map) {
+
+    hashMapMethod(printDebugHeader)(out, indentation, map);
 
     usize hashMapMethod(printDebugContentsArray)() {
         usize contentCount = map -> contentCount;

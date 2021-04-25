@@ -12,6 +12,8 @@ static bool appendLine(charVector* out, fu16 indentation, char* nullString);
 // line without the \n
 static bool appendLie(charVector* out, fu16 indentation, char* nullString);
 
+static bool appendHexSizeT(charVector* out, fu16 in);
 static bool appendSizeT(charVector* out, usize in);
+static bool appendPointer(charVector* out, void* in);
 
 #endif

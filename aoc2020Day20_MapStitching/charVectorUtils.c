@@ -50,10 +50,22 @@ static bool appendLie(charVector* out, fu16 indentation, char* nullString) {
         && appendNullString(out, nullString);
 }
 
+static bool appendHexSizeT(charVector* out, fu16 in) {
+    char* dest = addBlockcharVector(out, sizeof(usize) * 4 + 2);
+    size_t written = 0;
+    sprintf(dest, "%zn0x%zx", (signed) &written, in);
+    removeBlockcharVector(out, sizeof(usize) * 4 + 2 - written);
+}
 static bool appendSizeT(charVector* out, usize in) {
-    char* dest = addBlockcharVector(out, sizeof(usize) * 2);
+    char* dest = addBlockcharVector(out, sizeof(usize) * 4);
     size_t written = 0;
     sprintf(dest, "%zn%zu", &written, in);
-    removeBlockcharVector(out, sizeof(usize) * 2 - written);
+    removeBlockcharVector(out, sizeof(usize) * 4 - written);
+}
+static bool appendPointer(charVector* out, void* in) {
+    char* dest = addBlockcharVector(out, sizeof(void*) * 4);
+    size_t written = 0;
+    sprintf(dest, "%zn%p", &written, in);
+    removeBlockcharVector(out, sizeof(void*) * 4 - written);
 }
 #endif

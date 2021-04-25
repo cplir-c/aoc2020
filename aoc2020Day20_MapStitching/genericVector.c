@@ -171,7 +171,9 @@ bool vectorMethod(trimToSize) (Vector* vector, usize newSize) {
 
     #ifdef __STDC_NO_VLA__
         #if (__STDC_NO_VLA__ == 1)
-            #define WideE E[*]
+            #define WideElement TokenPaste(E, Array);
+            typedef E[*] WideElement;
+            #define WideE WideElement
         #endif
     #endif
     #ifndef WideE
@@ -216,6 +218,9 @@ bool vectorMethod(removeArray) (Vector* vector, usize count, WideE array);
 bool vectorMethod(popArray) (Vector* vector, usize count, WideE array, WideE out);
 
     #undef WideE
+    #ifdef WideElement
+        #undef WideElement
+    #endif
 
 E* vectorMethod(addIndex) (Vector* vector, usize index, E* item) {
     usize size = (vector -> size);
