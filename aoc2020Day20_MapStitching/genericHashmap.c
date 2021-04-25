@@ -436,7 +436,7 @@ static usize hashMapMethod(printDebug)(HashMap* map, fu16 indentation, charVecto
             map -> minimumSize,
             map -> sizeTwoPower);
         // remove the unused space
-        removeBlock(out, 7 * formatSize - written);
+        removeBlockcharVector(out, 7 * formatSize - written);
         return written;
     }
     hashMapMethod(printDebugHeader)();

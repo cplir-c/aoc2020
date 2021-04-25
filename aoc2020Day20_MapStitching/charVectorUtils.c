@@ -1,9 +1,10 @@
 
-#include "shortIntNames.h"
-#include "tileMaps.c"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "shortIntNames.h"
+#include "charVector.c"
 
 #ifndef DEBUG
     #error "Included charVectorUtils.c without setting debug macro"
@@ -51,7 +52,7 @@ static bool appendLie(charVector* out, fu16 indentation, char* nullString) {
 
 static bool appendSizeT(charVector* out, usize in) {
     char* dest = addBlockcharVector(out, sizeof(usize) * 2);
-    usize written = 0;
+    size_t written = 0;
     sprintf(dest, "%zn%zu", &written, in);
     removeBlockcharVector(out, sizeof(usize) * 2 - written);
 }

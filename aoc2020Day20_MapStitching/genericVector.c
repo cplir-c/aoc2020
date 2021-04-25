@@ -213,7 +213,7 @@ bool vectorMethod(popSegment) (Vector* vector, usize index, usize count, WideE o
 // Array methods: array contained in the vector
 E* vectorMethod(addArray) (Vector* vector, usize count, WideE array);
 bool vectorMethod(removeArray) (Vector* vector, usize count, WideE array);
-bool vectorMethod(popArray) (Vector* vector, usize count, WideE out);
+bool vectorMethod(popArray) (Vector* vector, usize count, WideE array, WideE out);
 
     #undef WideE
 

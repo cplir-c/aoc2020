@@ -2,7 +2,7 @@
 #include "charVector.h"
 
 #ifndef __TILE_STRUCTURES_H
-    #define __TILE_STRUCTURES_H
+    #define __TILE_STRUCTURES_H 1
 
 typedef struct {
 } Void;

@@ -32,7 +32,9 @@ bool vectorMethod(trimToSize) (Vector* vector, usize newSize);
 
         #ifdef __STDC_NO_VLA__
             #if (__STDC_NO_VLA__ == 1)
-                #define WideE E*
+                #define WideElement TokenPaste(E, Array);
+                typedef E[*] WideElement;
+                #define WideE WideElement
             #endif
         #endif
         #ifndef WideE
@@ -50,9 +52,12 @@ bool vectorMethod(popSegment) (Vector* vector, usize index, usize count, WideE o
 // Array methods: array contained in the vector
 E* vectorMethod(addArray) (Vector* vector, usize count, WideE array);
 bool vectorMethod(removeArray) (Vector* vector, usize count, WideE array);
-bool vectorMethod(popArray) (Vector* vector, usize count, WideE out);
+bool vectorMethod(popArray) (Vector* vector, usize count, WideE array, WideE out);
 
         #undef WideE
+        #ifdef WideElement
+            #undef WideElement
+        #endif
 
 E* vectorMethod(addItem) (Vector* vector, E* item);
 E* vectorMethod(addIndex) (Vector* vector, usize index, E* item);
@@ -65,6 +70,7 @@ E* vectorMethod(getItem) (Vector* vector);
 E* vectorMethod(getIndex) (Vector* vector, usize index);
 E* vectorMethod(setItem) (Vector* vector, E* item);
 E* vectorMethod(setIndex) (Vector* vector, usize index, E* item);
+
 
         #undef _TokenPaste
         #undef TokenPaste

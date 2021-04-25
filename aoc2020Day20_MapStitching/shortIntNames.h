@@ -1,5 +1,9 @@
+
 #include <stdint.h>
 #include <stdbool.h>
+
+#ifndef __SHORT_INT_NAMES_H
+    #define __SHORT_INT_NAMES_H 1
 
 typedef uint_fast64_t fu64;
 typedef uint_fast32_t fu32;
@@ -23,3 +27,5 @@ typedef int8_t i8;
 
 typedef uintptr_t usize;
 typedef intptr_t isize;
+
+#endif
