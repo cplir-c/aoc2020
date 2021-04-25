@@ -13,6 +13,8 @@
 
     #define KKey TokenPaste(K, Key)
     #define hashKey TokenPaste(hash, KKey)
+    // FIXME: resizing breaks in-bucket hashes (the .hash field) and new hashes (the map's .sizeTwoPower field)!
+    // It technically works but keeps the hashes in the old range, probably causing massive slowdowns and hash collisions
 extern usize hashKey(K* key);
 
 typedef struct {
@@ -29,6 +31,7 @@ typedef struct {
     usize size;
     usize bucketMask;
     usize minimumSize;
+    fu8 sizeTwoPower;
     Bucket* contents;
 } HashMap;
 
@@ -47,8 +50,12 @@ _Bool hashMapMethod(removeItem) (HashMap* map, K* key);
 _Bool hashMapMethod(__removeItem) (HashMap* map, K* key, usize keyHash);
 Bucket* hashMapMethod(getItem) (HashMap* map, K* key);
 
-usize nextHigherPowerOfTwo(double load);
-usize spreadBits(usize in);
+static usize nextHigherPowerOfTwo(double load);
+static usize spreadBits(usize in, fu8 twoPower);
+
+    #ifdef DEBUG
+static usize hashMapMethod(printDebug)(HashMap* map, fu16 indentation, charVector* out);
+    #endif
 
     #undef _TokenPaste
 #    undef TokenPaste

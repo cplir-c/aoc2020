@@ -4,6 +4,8 @@
 #include "tileMaps.c"
 #include "mapStitching.h"
 
+#ifndef __MAP_STITCHING_C
+#define __MAP_STITCHING_C 1
 /* intSqrt binary searches for the square root of the given area */
 static fu16 intSqrt(fu16 area) {
     fu16 upperBound = area >> 1;
@@ -359,3 +361,4 @@ bool backtrackStitching(fu16 tileCount, fu16 mapSideSize, fu16ToEdgeReferenceVec
 
     return 0;
 }
+#endif

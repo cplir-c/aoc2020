@@ -1,10 +1,10 @@
 #include "shortIntNames.h"
+#include "charVector.h"
 
 #ifndef __TILE_STRUCTURES_H
-#define __TILE_STRUCTURES_H
+    #define __TILE_STRUCTURES_H
 
 typedef struct {
-
 } Void;
 
 typedef struct {
@@ -20,9 +20,10 @@ typedef struct {
     Edge sides[4];
 } Tile;
 
-#ifdef DEBUG
+    #ifdef DEBUG
 static char const* const SIDE_STRING[4] = {"Top", "Right", "Bottom", "Left"};
-#endif
+static char const* const FORBACKWARD_STRINGS[2] = {"forward", "backward"};
+    #endif
 
 typedef enum {
     Top, Right, Bottom, Left
@@ -33,6 +34,9 @@ typedef struct {
     Side side;
     Tile* tile;
 } EdgeReference;
+    #ifdef DEBUG
+usize printDebugEdgeReference(charVector* out, fu16 indentation, EdgeReference* element);
+    #endif
 
 typedef EdgeReference Placement;
 #endif

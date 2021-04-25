@@ -15,6 +15,10 @@
     #define EString stringify(E)
     #define assignItem(destPtr, srcPtr) *destPtr = *srcPtr
 
+    #ifdef DEBUG
+        #include "charVectorUtils.c"
+    #endif
+
 bool vectorMethod(construct) (Vector* vector) {
     usize size = 4;
     vector -> size = 4;
@@ -165,9 +169,19 @@ bool vectorMethod(trimToSize) (Vector* vector, usize newSize) {
     return true;
 }
 
+    #ifdef __STDC_NO_VLA__
+        #if (__STDC_NO_VLA__ == 1)
+            #define WideE E[*]
+        #endif
+    #endif
+    #ifndef WideE
+        #define WideE E*
+    #endif
+
+// Block methods: end of this vector
 E* vectorMethod(addBlock) (Vector* vector, usize count) {
     if (!vectorMethod(preallocateSpace)(vector, count)) {
-        fprintf(stderr, "failed to allocate block of %lu items in a " EString " vector, returning NULL\n", count);
+        fprintf(stderr, "failed to allocate block of %zu items in a " EString " vector, returning NULL\n", count);
         return NULL;
     }
     usize contentCount = vector -> contentCount;
@@ -176,6 +190,32 @@ E* vectorMethod(addBlock) (Vector* vector, usize count) {
     vector -> contentCount = contentCount;
     return targetBlock;
 }
+bool vectorMethod(removeBlock) (Vector* vector, usize count) {
+    if (count > (vector -> size)) {
+        fprintf(stderr, "failed to remove block of %zu items from a " EString " vector of size %zu\n", count, vector -> size);
+        return false;
+    }
+    if (!vectorMethod(trimToSize)(vector, (vector -> size) - count)) {
+        fprintf(stderr, "failed to trim block of %zu items from a " EString " vector of size %zu\n", count, vector -> size);
+        return false;
+    }
+    return true;
+}
+bool vectorMethod(popBlock) (Vector* vector, usize count, WideE out) {
+
+}
+
+// Segment methods: index in this vector
+E* vectorMethod(addSegment) (Vector* vector, usize index, usize count);
+bool vectorMethod(removeSegment) (Vector* vector, usize index, usize count);
+bool vectorMethod(popSegment) (Vector* vector, usize index, usize count, WideE out);
+
+// Array methods: array contained in the vector
+E* vectorMethod(addArray) (Vector* vector, usize count, WideE array);
+bool vectorMethod(removeArray) (Vector* vector, usize count, WideE array);
+bool vectorMethod(popArray) (Vector* vector, usize count, WideE out);
+
+    #undef WideE
 
 E* vectorMethod(addIndex) (Vector* vector, usize index, E* item) {
     usize size = (vector -> size);
@@ -301,6 +341,58 @@ E* vectorMethod(setIndex) (Vector* vector, usize index, E* item) {
     *target = *item;
     return target;
 }
+
+    #ifdef DEBUG
+        #define VecString stringify(Vector)
+        #define EElement TokenPaste(E, Element)
+        #define printDebugElement TokenPaste(printDebug, EElement)
+extern usize printDebugElement(charVector* out, fu16 indentation, E* element);
+// char vector should work as long as it's the first defined vector
+static usize vectorMethod(printDebug) (charVector* out, fu16 indentation, Vector* vector) {
+    if (indentation == 0) {
+        appendLine(out, 0, VecString "");
+    } else {
+        appendNullString(out, "(" VecString ") {\n");
+    }
+
+    appendLie(out, indentation + 4, ".size = ");
+    appendSizeT(out, vector -> size);
+    appendNullString(out, ",\n");
+
+    usize contentCount = vector -> contentCount;
+    appendLie(out, indentation + 4, ".contentCount = ");
+    appendSizeT(out, contentCount);
+    appendNullString(out, ",\n");
+
+    if (contentCount == 0) {
+        appendLine(out, indentation + 4, ".contents = {}");
+    } else if (vector -> contents != NULL) {
+        appendLie(out, indentation + 4, ".contents = {");
+
+        for (usize i = 0; i < contentCount; ++i) {
+            appendLie(out, indentation + 8, "[");
+            appendSizeT(out, i);
+            appendNullString(out, "] = ");
+            printDebugElement(out, indentation + 8, (vector -> contents) + i);
+            if (i + 1 < contentCount) {
+                appendNullString(out, ",\n");
+            } else {
+                appendChar(out, '\n');
+            }
+        }
+
+        appendLine(out, indentation + 4, "}");
+    } else {
+        appendLine(out, indentation + 4, ".contents = NULL");
+    }
+
+    appendLie(out, indentation, "}");
+}
+        #undef printDebugElement
+        #undef EElement
+        #undef VecString
+    #endif
+
     #undef _TokenPaste
     #undef TokenPaste
     #undef Vector
@@ -311,4 +403,8 @@ E* vectorMethod(setIndex) (Vector* vector, usize index, E* item) {
     #undef assignItem
 #else
     #pragma message "Tried to preprocess genericVector.c without E defined"
+#endif
+
+#ifdef __GENERIC_VECTOR_H
+    #undef __GENERIC_VECTOR_H
 #endif

@@ -2,11 +2,14 @@
 #ifdef E
 #include "shortIntNames.h"
 
-    #define _TokenPaste(pre, post) pre ## post
-    #define TokenPaste(pre, post) _TokenPaste(pre, post)
-    #define Vector TokenPaste(E, Vector)
-    #define vectorMethod(name) TokenPaste(name, Vector)
-    
+    #ifndef __GENERIC_VECTOR_H
+        #define __GENERIC_VECTOR_H 1
+
+        #define _TokenPaste(pre, post) pre ## post
+        #define TokenPaste(pre, post) _TokenPaste(pre, post)
+        #define Vector TokenPaste(E, Vector)
+        #define vectorMethod(name) TokenPaste(name, Vector)
+
 
 typedef struct {
     usize size;
@@ -27,7 +30,29 @@ bool vectorMethod(trimToContents) (Vector* vector);
 bool vectorMethod(preallocateSpace) (Vector* vector, usize itemCount);
 bool vectorMethod(trimToSize) (Vector* vector, usize newSize);
 
+        #ifdef __STDC_NO_VLA__
+            #if (__STDC_NO_VLA__ == 1)
+                #define WideE E*
+            #endif
+        #endif
+        #ifndef WideE
+            #define WideE E*
+        #endif
+
+// Block methods: end of this vector
 E* vectorMethod(addBlock) (Vector* vector, usize count);
+bool vectorMethod(removeBlock) (Vector* vector, usize count);
+bool vectorMethod(popBlock) (Vector* vector, usize count, WideE out);
+// Segment methods: index in this vector
+E* vectorMethod(addSegment) (Vector* vector, usize index, usize count);
+bool vectorMethod(removeSegment) (Vector* vector, usize index, usize count);
+bool vectorMethod(popSegment) (Vector* vector, usize index, usize count, WideE out);
+// Array methods: array contained in the vector
+E* vectorMethod(addArray) (Vector* vector, usize count, WideE array);
+bool vectorMethod(removeArray) (Vector* vector, usize count, WideE array);
+bool vectorMethod(popArray) (Vector* vector, usize count, WideE out);
+
+        #undef WideE
 
 E* vectorMethod(addItem) (Vector* vector, E* item);
 E* vectorMethod(addIndex) (Vector* vector, usize index, E* item);
@@ -40,10 +65,12 @@ E* vectorMethod(getItem) (Vector* vector);
 E* vectorMethod(getIndex) (Vector* vector, usize index);
 E* vectorMethod(setItem) (Vector* vector, E* item);
 E* vectorMethod(setIndex) (Vector* vector, usize index, E* item);
-    #undef _TokenPaste
-    #undef TokenPaste
-    #undef Vector
-    #undef vectorMethod
+
+        #undef _TokenPaste
+        #undef TokenPaste
+        #undef Vector
+        #undef vectorMethod
+    #endif
 #else
     #pragma message "tried to preprocess genericVector.h without E defined"
 #endif

@@ -10,31 +10,4 @@ static bool testStitching(char tilesString[], fu64 expectedCornerIDProduct);
  * Here it processes the tile strings into tile objects and indexes them by edge
  */
 static fu64 findCornerIDProduct(char tilesString[]);
-/* countTiles counts the tiles contained in a tilesString */
-static fu16 countTiles(char tilesString[]);
-/* findTiles puts in null characters in the tilesString
- * to snip the tilesString into individual tiles, and
- * puts them in an array of char pointers allocated using the count from countTiles
- */
-static void findTiles(char tilesString[], char** tilesPointers);
-/* buildTileList builds a TileVector of tile objects from an array of tile strings */
-static bool buildTileList(fu16 tileCount, char** tilesPointers, TileVector* tiles, charVector* strings);
-/* parseTileHeader parses the Tile ####:\n part of a tileString,
- * where #### is the 4 digit tileID, and puts the ID in the Tile*
- */
-static char* parseTileHeader(Tile* tile, char* tileStringPoint);
-/* constructTileFromTileString builds a single tile object from a single tile string */
-static bool constructTileFromTileString(char* tileString, TileVector* tiles, charVector* strings);
-/* constructIntEdgeFromCharEdge parses the forward and backward
- * edge strings in an Edge* into fu16 bit patterns, and
- * puts them back in the same Edge*
- */
-static bool constructIntEdgeFromCharEdge(Edge* edge);
-/* parseRowFromRowString parses a single edge string into its fu16 bit pattern */
-static fu16 parseRowFromRowString(char* rowString);
-/* addEdgeToEdgeMap adds an EdgeReference to the EdgeReference MultiMap */
-static bool addEdgeToEdgeMap(fu16* edgeInt, EdgeReference* edgeRef, fu16ToEdgeReferenceVectorOpenHashMap* edges);
-/* buildEdgeMap fills in the edge map with
- * the edge references of the tiles its given
- */
-static bool buildEdgeMap(TileVector* tiles, fu16ToEdgeReferenceVectorOpenHashMap* edges);
+

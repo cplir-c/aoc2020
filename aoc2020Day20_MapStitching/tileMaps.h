@@ -3,13 +3,11 @@
 #ifndef __TILE_MAPS_H
     #define __TILE_MAPS_H
 
+    #include "charVector.h"
     #define E EdgeReference
         #include "genericVector.h"
     #undef E
     #define E Tile
-        #include "genericVector.h"
-    #undef E
-    #define E char
         #include "genericVector.h"
     #undef E
     #define E fu16

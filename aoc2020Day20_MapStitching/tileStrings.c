@@ -1,3 +1,6 @@
+#ifndef __TILE_STRINGS_C
+#define __TILE_STRINGS_C 1
+
 char exampleTilesString[] =
     "Tile 2311:\n"
     "..##.#..#.\n"
@@ -1869,3 +1872,5 @@ char payloadTilesString[] = "Tile 1409:\n"
     "...#.....#\n"
     "#.#..#.#..\n"
     "\n";
+
+#endif
