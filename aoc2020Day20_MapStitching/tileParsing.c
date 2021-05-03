@@ -72,7 +72,7 @@ static bool buildTileList(fu16 tileCount, char** tilesPointers, TileVector* tile
     return true;
 }
 
-static char const* parseTileHeader(Tile* tile, char const* tileStringPoint) {
+static char const* parseTileHeader(fu16* tileID, char const* tileStringPoint) {
     char const* tileString = tileStringPoint;
     if (tileStringPoint[0] != 'T' || tileStringPoint[1] != 'i'
         || tileStringPoint[2] != 'l' || tileStringPoint[3] != 'e' || tileStringPoint[4] != ' ') {
@@ -82,7 +82,7 @@ static char const* parseTileHeader(Tile* tile, char const* tileStringPoint) {
     tileStringPoint += 5; // skip "Tile "
 
     // parse tileID
-    tile -> tileID = strtoul(
+    *tileID = strtoul(
         (char* restrict) tileStringPoint,
         (char** restrict) &tileStringPoint, 10
     );
@@ -95,7 +95,7 @@ static char const* parseTileHeader(Tile* tile, char const* tileStringPoint) {
     return tileStringPoint;
 }
 
-static bool constructIntEdgeFromCharEdge(Edge* edge) {
+static bool constructIntEdgeFromCharEdge(struct MutEdge* edge) {
     edge -> backward = parseRowFromRowString(edge -> backwardString);
     if (edge -> backward == UINT_FAST16_MAX) {
         fprintf(stderr, "failed to construct backward int edge %s\n", edge -> backwardString);
@@ -127,16 +127,24 @@ static fu16 parseRowFromRowString(char const* rowString) {
 }
 
 static bool constructTileFromTileString(char const* tileStringPoint, TileVector* tiles, charVector* strings) {
-    Tile tile;    // look starting at tileStringPoint, and put the parse stop in tileStringPoint, parsing as base 10
-    memset(&tile, 0, sizeof(tile)); // zero out the tile
-    tileStringPoint = parseTileHeader(&tile, tileStringPoint);
 
-    tile.unrotatedTile = tileStringPoint;
+    char const* const unrotatedTile = tileStringPoint;
+    // look starting at tileStringPoint, and put the parse stop in tileStringPoint, parsing as base 10
+    fu16 tileID = 0;
+    tileStringPoint = parseTileHeader(&tileID, tileStringPoint);
 
     char* tileTopEnd = strchr(tileStringPoint, (int) '\n');
-    isize rowLength = (usize) tileTopEnd;
-    rowLength -= (usize) tileStringPoint;
-    ++rowLength;
+    usize rowLength;
+    {
+        isize irowLength = (isize) tileTopEnd - (isize) tileStringPoint;
+        ++irowLength;
+        if (irowLength < 0) {
+            fprintf(stderr, "failed to find positive row length %td\n", irowLength);
+            return false;
+        } else {
+            rowLength = (usize) irowLength;
+        }
+    }
     #ifdef DEBUG
     printf("row length (probably 11) %ld %p %p\n", rowLength, (void*) tileTopEnd, (void*) tileStringPoint);
     #endif
@@ -146,24 +154,38 @@ static bool constructTileFromTileString(char const* tileStringPoint, TileVector*
         return false;
     }
 
-    tile.sides[Top].forwardString = addBlockcharVector(strings, rowLength * 2);
-    if (tile.sides[Top].forwardString == NULL) {
-        fprintf(stderr, "failed to allocate block for top strings of tile id %lu\n", tile.tileID);
-        return false;
-    }
-    memcpy(tile.sides[Top].forwardString, tileStringPoint, rowLength - 1);
-    tileStringPoint += rowLength - 2;
+    struct MutTile tile = {
+            .unrotatedTile = unrotatedTile,
+            .tileID = tileID
+    };
     char nullChar = '\0';
-    *(tile.sides[Top].forwardString + rowLength - 1) = '\0';
+    {
+        char* const forwardString = addBlockcharVector(strings, rowLength * 2);
+        if (tile.sides[Top].forwardString == NULL) {
+            fprintf(stderr, "failed to allocate block for top strings of tile id %lu\n", tile.tileID);
+            return false;
+        }
+        memcpy(tile.sides[Top].forwardString, tileStringPoint, rowLength - 1);
+        tileStringPoint += rowLength - 2;
 
-    tile.sides[Top].backwardString = tile.sides[Top].forwardString + rowLength;
-    for (fu16 i = 0; i < rowLength - 1; --tileStringPoint, ++i) {
-        tile.sides[Top].backwardString[i] = *tileStringPoint;
-    }
-    setItemcharVector(strings, &nullChar);
-    if (!constructIntEdgeFromCharEdge(&tile.sides[Top])) {
-        fprintf(stderr, "failed to construct top edge of tile id %lu\n", tile.tileID);
-        return false;
+        *(forwardString + rowLength - 1) = '\0';
+
+        char* const backwardString = forwardString + rowLength;
+        for (fu16 i = 0; i < rowLength - 1; --tileStringPoint, ++i) {
+            backwardString[i] = *tileStringPoint;
+        }
+        setItemcharVector(strings, &nullChar);
+        struct MutEdge topEdge = {
+            .forwardString = forwardString,
+            .backwardString = backwardString,
+            .forward = 0,
+            .backward = 0
+        };
+        tile.sides[Top] = topEdge;
+        if (!constructIntEdgeFromCharEdge(&topEdge)) {
+            fprintf(stderr, "failed to construct top edge of tile id %lu\n", tile.tileID);
+            return false;
+        }
     }
 
     tileStringPoint = tile.unrotatedTile;
@@ -228,7 +250,26 @@ static bool constructTileFromTileString(char const* tileStringPoint, TileVector*
         return false;
     }
 
-    if (addItemTileVector(tiles, &tile) == NULL) {
+    #define freezeEdge(index) [index] = (Edge) {\
+        .forwardString = tile.sides[index].forwardString,\
+        .backwardString = tile.sides[index].backwardString,\
+        .forward = tile.sides[index].forward,\
+        .backward = tile.sides[index].backward\
+      }
+
+    Tile const constTile = {
+        .tileID = tile.tileID,
+        .unrotatedTile = tile.unrotatedTile,
+        .sides = {
+             freezeEdge(Top),
+             freezeEdge(Left),
+             freezeEdge(Bottom),
+             freezeEdge(Right)
+        }
+    };
+
+    #undef freezeEdge
+    if (addItemTileVector(tiles, (Tile*) &constTile) == NULL) {
         fprintf(stderr, "failed to add tile %s to tiles vector\n", tile.unrotatedTile);
         return false;
     }

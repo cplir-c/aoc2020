@@ -7,6 +7,13 @@ static bool testTileParsing();
 static bool testTileCounting();
 static bool testTileFinding();
 static bool testTileRotation();
+
+static bool testDebugPrintAppending();
+static bool testEdgeDebugPrinting();
+static bool testTileDebugPrinting();
+static bool testEdgeReferenceDebugPrinting();
+static bool testVectorDebugPrinting();
+
 static bool testEdgeMapBuilding();
 static bool testTileSelfLookup();
 static bool testTileMatchLookup();

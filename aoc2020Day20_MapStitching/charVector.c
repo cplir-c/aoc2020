@@ -8,10 +8,12 @@
     #define E char
         #include "genericVector.h"
 usize printDebugcharElement(charVector* out, fu16 indentation, char* element) {
+	usize startSize = indentation;
+	startSize = out->contentCount;
     appendChar(out, '\'');
     appendChar(out, *element);
     appendChar(out, '\'');
-    return 3;
+    return out -> contentCount - startSize;
 }
         #include "genericVector.c"
     #undef E

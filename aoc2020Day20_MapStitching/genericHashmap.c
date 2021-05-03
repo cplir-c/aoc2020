@@ -34,7 +34,7 @@
         #include "charVectorUtils.c"
     #endif
 
-_Bool hashMapMethod(construct1) (HashMap* map) {
+_Bool hashMapMethod(construct) (HashMap* map) {
     return hashMapMethod(construct3) (map, 0.5, 5);
 }
 
@@ -54,13 +54,13 @@ _Bool hashMapMethod(construct3) (HashMap* map, double loadFactor, usize required
     if (contents == NULL) {
         contents = calloc(minSize, sizeof(Bucket));
         if (contents == NULL) {
-            fprintf(stderr, "unable to allocate %lu buckets, or %lu bytes", minSize, minSize * sizeof(Bucket));
+            fprintf(stderr, "unable to allocate %zu buckets, or %zu bytes\n", minSize, minSize * sizeof(Bucket));
             return false;
         }
     } else {
         // initialize contents;
-        Bucket* noBucket = contents + minSize;
-        for (Bucket* bucket = contents; bucket < noBucket; ++bucket) {
+        for (fu8 i = 0; i < minSize; ++i) {
+            Bucket* bucket = &(contents[i]);
             bucket -> hash = SIZE_MAX;
         }
     }
@@ -69,7 +69,7 @@ _Bool hashMapMethod(construct3) (HashMap* map, double loadFactor, usize required
     // implicit truncation / flooring on the next line
     map -> growFillLevel = (usize) (loadFactor * minSize);
     map -> bucketMask = minSize - 1;
-    map -> sizeTwoPower = (sizeof(usize) * 8) - __builtin_clzl(minSize);
+    map -> sizeTwoPower = (fu8) (sizeof(usize) * 8) - __builtin_clzl(minSize);
     return true;
 }
 
@@ -208,7 +208,7 @@ Bucket* hashMapMethod(__addItem) (HashMap* map, K* key, V* value, usize keyHash)
     usize bucketMask = map -> bucketMask;
     usize spreadKeyHash = spreadBits(keyHash, map -> sizeTwoPower);
     Bucket* contents = map -> contents;
-    usize index = spreadKeyHash;// & bucketMask;
+    usize index = spreadKeyHash & bucketMask;
     Bucket* pointed = contents + index;
 // don't check for hitting the insertion point again because the hashmap should resize before filling up completely
 // instead, check if the pointed bucket is empty
@@ -258,7 +258,7 @@ _Bool hashMapMethod(__removeItem) (HashMap* map, K* key, usize keyHash) {
     usize bucketMask = map -> bucketMask;
     usize spreadKeyHash = spreadBits(keyHash, map -> sizeTwoPower);
     Bucket* contents = map -> contents;
-    usize index = spreadKeyHash;// & bucketMask;
+    usize index = spreadKeyHash & bucketMask;
     #if SMART_CLUMP_DELETION
     usize startIndex = index;
     #endif
@@ -374,16 +374,17 @@ static usize nextHigherPowerOfTwo(double load) {
     load = ceil(load);
     usize intLoad = (usize) load;
     // number of bits to enumerate intLoad
-    unsigned char shift = (sizeof(usize) * 8) - __builtin_clzl(intLoad);
+    unsigned char shift = (sizeof(usize) * 8) - (usize) __builtin_clzl(intLoad);
     usize twoLoad = (((usize)1) << shift);
     twoLoad <<= ((_Bool)(twoLoad < intLoad));
     return twoLoad;
 }
-
+fu8 const BYTE_SIZE = 8;
 static usize spreadBits(usize in, fu8 twoPower) {
-    in ^= in >> ((sizeof(usize) * 8) - twoPower);
+    in ^= in >> ((sizeof(usize) * BYTE_SIZE) - twoPower);
     // the long constant here is a decimal expansion of the golden ratio
-    in = (((usize) 11400714819323198485u) * in) >> ((sizeof(usize) * 8) - twoPower);
+
+    in = (((usize) 11400714819323198485u) * in) >> ((sizeof(usize) * BYTE_SIZE) - twoPower);/*@suppress("Avoid magic numbers")*/
     return in;
 }
     #endif
@@ -408,77 +409,85 @@ extern usize printDebugValue(charVector* out, fu16 indentation, V* value);
 
 usize hashMapMethod(printDebugHeader) (charVector* out, fu16 indentation, HashMap* map) {
     usize beginIndex = out -> contentCount;
-    appendLine(out, indentation, "%zn(" HashMapString ") {");
-    appendLine(out, indentation + 4, ".loadFactor = %f,");
-    appendLine(out, indentation + 4, ".growFillLevel = %zu,");
-    appendLine(out, indentation + 4, ".shinkFillLevel = %zu,");
-    appendLine(out, indentation + 4, ".contentCount = %zu,");
-    appendLine(out, indentation + 4, ".size = %lu,");
-    appendLine(out, indentation + 4, ".bucketMask = 0x%zx,");
-    appendLine(out, indentation + 4, ".minimumSize = %zu,");
-    appendLine(out, indentation + 4, ".sizeTwoPower = %hhu,");
-    appendChar(out, '\0');
-    usize formatSize = (out -> contentCount) - beginIndex;
-    char* destBlock = addBlockcharVector(out, 6 * formatSize);
-    // copy the format string to the end of the char vector
-    char* formatBlock = memcpy(destBlock + formatSize * 5, (out -> contents) + beginIndex, formatSize);
-    destBlock = (out -> contents) + beginIndex;
-    // format the hashmap header into place
-    usize written = 0;
-    sprintf(destBlock, formatBlock, &written,
-        map -> loadFactor,
-        map -> growFillLevel,
-        map -> shrinkFillLevel,
-        map -> contentCount,
-        map -> size,
-        map -> bucketMask,
-        map -> minimumSize,
-        map -> sizeTwoPower);
-    // remove the unused space
-    removeBlockcharVector(out, 7 * formatSize - written);
-    return written;
+    appendLine(out, indentation, (char*) "(" HashMapString ") {");
+
+    appendLie(out, indentation + 4, ".loadFactor = ");
+    appendDouble(out, map -> loadFactor);
+    appendNullString(out, ",\n");
+
+    appendLie(out, indentation + 4, ".growFillLevel = ");
+    appendSizeT(out, map -> growFillLevel);
+    appendNullString(out, ",\n");
+
+    appendLie(out, indentation + 4, ".shrinkFillLevel = ");
+    appendSizeT(out, map -> shrinkFillLevel);
+    appendNullString(out, ",\n");
+
+    appendLie(out, indentation + 4, ".contentCount = ");
+    appendSizeT(out, map -> contentCount);
+    appendNullString(out, ",\n");
+
+    appendLie(out, indentation + 4, ".size = ");
+    appendSizeT(out, map -> size);
+    appendNullString(out, ",\n");
+
+    appendLie(out, indentation + 4, ".bucketMask = ");
+    appendHexSizeT(out, map -> bucketMask);
+    appendNullString(out, ",\n");
+
+    appendLie(out, indentation + 4, ".minimumSize = ");
+    appendSizeT(out, map -> minimumSize);
+    appendNullString(out, ",\n");
+
+    appendLie(out, indentation + 4, ".sizeTwoPower = ");
+    appendSizeT(out, map -> sizeTwoPower);
+    appendNullString(out, ",\n");
+    return (out -> contentCount) - beginIndex;
+}
+usize hashMapMethod(printDebugContentsArray)(charVector* out, fu16 indentation, HashMap* map) {
+    usize startSize = out -> contentCount;
+    usize contentCount = map -> contentCount;
+    appendLie(out, indentation + 4, ".contents = (" BucketString "*) (" BucketString "[");
+    appendSizeT(out, contentCount);
+    appendNullString(out, "]) {\n");
+
+    for (usize i = 0; i < contentCount; ++i){
+        appendLie(out, indentation + 8, "[");
+        appendSizeT(out, i);
+        appendNullString(out, "] = (" BucketString ") ");
+
+        Bucket* bucket = (map -> contents) + i;
+        if (bucket -> hash == SIZE_MAX) {
+            appendNullString(out, "EMPTY_BUCKET,\n");
+        } else {
+            appendNullString(out, "{\n");
+
+            appendLie(out, indentation + 12, ".hash = ");
+            appendSizeT(out, bucket -> hash);
+            appendNullString(out, ",\n");
+
+            appendLie(out, indentation + 12, ".key = (" KString ") ");
+            printDebugKey(out, indentation + 12, &(bucket -> key));
+            appendNullString(out, ",\n");
+
+            appendLie(out, indentation + 12, ".value = (" VString ") ");
+            printDebugValue(out, indentation + 12, &(bucket -> value));
+            appendNullString(out, ",\n");
+
+            appendLine(out, indentation + 8, "},");
+        }
+    }
+
+    appendLine(out, indentation + 4, "}");
+    return (out -> contentCount) - startSize;
 }
 static usize hashMapMethod(printDebug)(charVector* out, fu16 indentation, HashMap* map) {
-
+    usize startSize = out -> contentCount;
     hashMapMethod(printDebugHeader)(out, indentation, map);
-
-    usize hashMapMethod(printDebugContentsArray)() {
-        usize contentCount = map -> contentCount;
-        appendLie(out, indentation + 4, ".contents = (" BucketString "*) (" BucketString "[");
-        appendSizeT(out, contentCount);
-        appendNullString(out, "]) {\n");
-
-        for (usize i = 0; i < contentCount; ++i){
-            appendLie(out, indentation + 8, "[");
-            appendSizeT(out, i);
-            appendNullString(out, "] = (" BucketString ") ");
-
-            Bucket* bucket = (map -> contents) + i;
-            if (bucket -> hash == SIZE_MAX) {
-                appendNullString(out, "EMPTY_BUCKET,\n");
-            } else {
-                appendNullString(out, "{\n");
-
-                appendLie(out, indentation + 12, ".hash = ");
-                appendSizeT(out, bucket -> hash);
-                appendNullString(out, ",\n");
-
-                appendLie(out, indentation + 12, ".key = (" KString ") ");
-                printDebugKey(out, indentation + 12, &(bucket -> key));
-                appendNullString(out, ",\n");
-
-                appendLie(out, indentation + 12, ".value = (" VString ") ");
-                printDebugValue(out, indentation + 12, &(bucket -> value));
-                appendNullString(out, ",\n");
-
-                appendLine(out, indentation + 8, "},");
-            }
-        }
-
-        appendLine(out, indentation + 4, "}");
-    }
-    hashMapMethod(printDebugContentsArray)();
+    hashMapMethod(printDebugContentsArray)(out, indentation, map);
     appendLine(out, indentation, "};");
+    usize endSize = out -> contentCount;
+    return endSize - startSize;
 }
 
         #undef printDebugValue

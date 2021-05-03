@@ -30,7 +30,9 @@ static bool runTests() {
     #define errored(message) {\
         fprintf(stderr, message "\n");\
         success = false;\
-      }
+    }
+
+
 
     if (!testRowParsing()) {
         errored("failed to parse row from string");
@@ -50,6 +52,23 @@ static bool runTests() {
     if (!testTileRotation()) {
         errored("failed to get rotated tile's edges");
     }
+
+    if (!testDebugPrintAppending()) {
+        errored("failed to append to debug print properly\n");
+    }
+    if (!testEdgeDebugPrinting()) {
+        errored("failed to debug print edges properly\n");
+    }
+    if (!testTileDebugPrinting()) {
+        errored("failed to debug print tiles properly\n");
+    }
+    if (!testEdgeReferenceDebugPrinting()) {
+        errored("failed to debug print edge references properly\n");
+    }
+    if (!testVectorDebugPrinting()) {
+        errored("failed to debug print vectors properly\n");
+    }
+
     if (!testEdgeMapBuilding()) {
         errored("failed to build edge map");
     }
@@ -65,7 +84,7 @@ static bool runTests() {
 }
 
 static void printBinaryInteger(fu16 integer) {
-    usize const size = (sizeof(fu16) * 8) - __builtin_clzl(integer) + 1;
+    usize const size = (sizeof(fu16) * 8) - (usize const) __builtin_clzl(integer) + 1;
     printf("string size %lu\n", size);
     char string[size];
     fu16 i = 0;
@@ -97,9 +116,9 @@ static bool testRowParsing() {
     return true;
 }
 static bool testEdgeParsing() {
-    Edge parsed = {
-        .forwardString = "#..#.##..#",
-        .backwardString = "#..##.#..#",
+    struct MutEdge parsed = {
+        .forwardString = (char*) "#..#.##..#",
+        .backwardString = (char*) "#..##.#..#",
         .forward = 0x259,
         .backward = 0x269
     };
@@ -162,7 +181,7 @@ static bool testTileParsing() {
         return false;
     }
     charVector strings; // 4 edges, each with 2 rows of 0 terminated 10 char strings
-    if (!construct2charVector(&strings, 4 * 2 * 11)) {
+    if (!construct2charVector(&strings, 0x100)) {// 4 * 2 * 11)) {
         fprintf(stderr, "failed to construct char vector in testing tile parsing\n");
         destructTileVector(&tileVector);
         return false;
@@ -180,8 +199,11 @@ static bool testTileParsing() {
             success = false;
         }
         for (fu16 i = 0; i < 4; ++i) {
-            Edge* correctEdge = &(correctTile.sides[i]);
-            Edge* parsedEdge = &((parsedTile -> sides)[i]);
+            Edge const* correctEdge = &(correctTile.sides[i]);
+            Edge const* parsedEdge = &((parsedTile -> sides)[i]);
+            printf("%p %p", (void*) correctEdge, (void*) parsedEdge);
+            printf("%p %p", (void*) correctEdge -> forwardString, (void*) parsedEdge -> forwardString);
+
             if (strncmp((parsedEdge -> forwardString), correctEdge -> forwardString, 11) != 0) {
                 fprintf(stderr, "incorrect forward string, side %s [%lu], was \"%s\" but should be \"%s\"\n", SIDE_STRING[i], i, parsedEdge -> forwardString, correctEdge -> forwardString);
                 success = false;
@@ -220,12 +242,12 @@ static bool testTileCounting(){
     return countTiles(exampleTilesString) == 9;
 }
 static bool testTileFinding(){
-    #ifdef __STDC_LIB_EXT1__ // pypy3 tells me it's 1097 chars
+    #ifdef __STDC_LIB_EXT1__
     #pragma message "Found bounds checked libc functions!"
     usize exampleLen = strnlen_s(exampleTilesString, 1100);
     #else
     usize exampleLen = strlen(exampleTilesString);
-    #endif
+    #endif // pypy3 tells me it's 1097 chars
     if (exampleLen == 1100) {
         fprintf(stderr, "failed to find the length of the example tiles string\n");
         return false;
@@ -241,7 +263,7 @@ static bool testTileFinding(){
 
 static bool testTileRotation() {
     // test getEdgeInteger and getEdgeString
-    Edge* correctEdges[4][4] = {
+    Edge const* const correctEdges[SIDE_COUNT][SIDE_COUNT] = {
         [Top] = { // Top up rotation
             [Top] = &correctTile.sides[Top],
             [Right] = &correctTile.sides[Right],
@@ -287,9 +309,10 @@ static bool testTileRotation() {
                     allCorrect = false;
                 }
 
-                char* placedEdgeString = getEdgeString(&placement, compareSide);
-                char* correctEdgeString = *(&(correctEdges[placement.side][compareSide] -> forwardString) + placement.backwards);
-                if (placedEdgeString != correctEdgeString && strncmp(placedEdgeString, correctEdgeString, 11) != 0) {
+                char const* const placedEdgeString = getEdgeString(&placement, compareSide);
+                char const* const correctEdgeString = *(&(correctEdges[placement.side][compareSide] -> forwardString) + placement.backwards);
+                fu8 ROW_LENGTH = 11;
+                if (placedEdgeString != correctEdgeString && strncmp(placedEdgeString, correctEdgeString, ROW_LENGTH) != 0) {
                     fprintf(stderr, "test tile placed facing %s's %s %s side string %s "
                         "didn't match the expected value of %s\n",
                         SIDE_STRING[placement.side], SIDE_STRING[compareSide],
@@ -319,6 +342,97 @@ static bool testTileRotation() {
         }
     }
     return allCorrect;
+}
+
+static bool testDebugPrintAppending(){
+    bool success = true;
+    charVector printSpace = {
+        .size = 100,
+        .contentCount = 0,
+        .contents = (char[128]) {0}
+    };
+
+    //printf("entering char appending test loop\n");
+    for (fu8 i = 1; i < 128; ++i) {
+        appendChar(&printSpace, (char) i);
+        appendChar(&printSpace, '\0');
+
+        if (printSpace.contents[0] != i || printSpace.contents[1] != 0 || printSpace.contentCount != 2) {
+            fprintf(stderr, "failed to append characters properly\n");
+            success = false;
+            break;
+        }
+        printSpace.contentCount = 0;
+    }
+
+    //printf("testing appending 13 Xs\n");
+    appendChars(&printSpace, 13, 'X');
+    appendChar(&printSpace, '\0');
+    if (printSpace.contentCount == 14) {
+        for (fu8 i = 0; i < 13; ++i) {
+            if (printSpace.contents[i] != 'X') {
+                fprintf(stderr, "mismatched character in repetition appending debug print test\n");
+                success = false;
+                break;
+            }
+        }
+        if (printSpace.contents[13] != '\0') {
+            fprintf(stderr, "missing null byte after repetition appending debug print test\n");
+            success = false;
+        }
+    } else {
+        fprintf(stderr, "wrong character count after repetition appending debug print test\n");
+        success = false;
+    }
+    printSpace.contentCount = 0;
+
+    if (!appendDouble(&printSpace, 55.55)) {
+        fprintf(stderr, "failed to append double 55.55 to debug print space char vector\n");
+        success = false;
+    } else {
+        appendChar(&printSpace, '\0');
+        if (printSpace.contentCount != 6 || strncmp(printSpace.contents, "55.55", 6) != 0) {
+            fprintf(stderr, "debug appended 55.55 wrong: got (char[%zu]) \"%s\" but was supposed to be (char[6]) \"55.55\"\n", printSpace.contentCount, printSpace.contents);
+            success = false;
+        }
+    }
+    printSpace.contentCount = 0;
+
+    appendHexSizeT(&printSpace, 0x124810204080);
+    appendChar(&printSpace, '\0');
+    if (printSpace.contentCount != 15 || strncmp(printSpace.contents, "0x124810204080", 15) != 0) {
+        fprintf(stderr, "debug appended 0x124810204080 wrong: was %zu long but should be 15: \"%s\"\n", printSpace.contentCount, printSpace.contents);
+        success = false;
+    }
+    printSpace.contentCount = 0;
+                                  //12345678901234567890123
+    char const lieTestString[23] = "Testing lie appending!";
+    appendLie(&printSpace, 4, lieTestString);
+    appendChar(&printSpace, '\0');
+    if (printSpace.contentCount != 23) {
+        fprintf(stderr, "failed to append lie, mismatching character count: was %zu but should be 23\n", printSpace.contentCount);
+        success = false;
+    } else if(strncmp(printSpace.contents, lieTestString, 23) != 0) {
+        fprintf(stderr, "failed to append lie, mismatching strings: got \"%s\" but should have been \"%s\"", printSpace.contents, lieTestString);
+        success = false;
+    }
+    printSpace.contentCount = 0;
+
+    //appendLine(&printSpace, )
+
+    return success;
+}
+static bool testEdgeDebugPrinting(){
+    return false;
+}
+static bool testTileDebugPrinting(){
+    return false;
+}
+static bool testEdgeReferenceDebugPrinting(){
+    return false;
+}
+static bool testVectorDebugPrinting(){
+    return false;
 }
 
 /*
@@ -498,7 +612,8 @@ static bool testEdgeMapBuilding() {
     }
 
     // compare edge maps
-    if (edges.loadFactor != correctEdgeMap.loadFactor) {
+    double LOAD_FACTOR_PRECISION = 0.001;
+    if (edges.loadFactor >= correctEdgeMap.loadFactor + LOAD_FACTOR_PRECISION || edges.loadFactor <= correctEdgeMap.loadFactor - LOAD_FACTOR_PRECISION) {
         fprintf(stderr, "mismatched load factor %lf, expected load factor %lf\n", edges.loadFactor, correctEdgeMap.loadFactor);
         success = false;
     }
@@ -560,7 +675,7 @@ static bool testEdgeMapBuilding() {
             if (correctMapBucket -> hash != edgeMapBucket -> hash) {
                 fprintf(stderr, "mismatched hashes at index %hhu in edge maps: found %lu, expected %lu\n", i, edgeMapBucket -> hash, correctMapBucket -> hash);
                 success = false;
-                if (edgeMapBucket -> hash == 0) {
+                if (edgeMapBucket -> hash == SIZE_MAX) {
                     fprintf(stderr, "edge map bucket hash was 0; skipping these buckets\n");
                     ++correctMapBucket;
                     ++edgeMapBucket;
@@ -628,13 +743,36 @@ static bool testEdgeMapBuilding() {
             ++edgeMapBucket;
         }
     }
+
+    if (!success) {
+        charVector debugMap;
+        if (!construct2charVector(&debugMap, 1024)) {
+            fprintf(stderr, "failed to allocate 1024 size charVector for debug map printing\n");
+            destructfu16ToEdgeReferenceVectorOpenHashMap(&edges);
+            return false;
+        }
+        printDebugfu16ToEdgeReferenceVectorOpenHashMap(&debugMap, 0, &edges);
+        for (usize i = 0; i < debugMap.contentCount; ++i) {
+            if (debugMap.contents[i] == '\0') {
+                fprintf(stderr, "found null byte in debug map dump at index %zu\n", i);
+                debugMap.contents[i] = 'X';
+            }
+        }
+        appendChar(&debugMap, '\0');
+        printf("printing debug map of size %zu\n", debugMap.contentCount);
+        printf("fu16ToEdgeReferenceVectorOpenHashMap correctMap = ");
+        puts(debugMap.contents);
+        destructcharVector(&debugMap);
+    }
     destructfu16ToEdgeReferenceVectorOpenHashMap(&edges);
     // don't destruct the statically allocated correctTile by destructing the justCorrectTile vector
     return success;
 }
 
 static bool testTileSelfLookup() {
-
+    return false;
 }
-static bool testTileMatchLookup() {}
+static bool testTileMatchLookup() {
+    return false;
+}
 #endif

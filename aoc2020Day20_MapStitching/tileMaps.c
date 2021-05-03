@@ -27,7 +27,9 @@
     #define E fu16
     #ifdef DEBUG
 usize printDebugfu16Element(charVector* out, fu16 indentation, fu16* element) {
+    usize startSize = out -> contentCount;
     appendSizeT(out, (usize) (*element));
+    return (out -> contentCount) - startSize;
 }
     #endif
         #include "genericVector.c"
@@ -41,10 +43,12 @@ usize hashfu16Key (fu16* key) {
 }
     #ifdef DEBUG
 usize printDebugfu16Key (charVector* out, fu16 indentation, fu16* key) {
+    usize startSize = out -> contentCount;
     appendSizeT(out, (usize) *key);
+    return (out -> contentCount) - startSize;
 }
 usize printDebugEdgeReferenceVectorValue (charVector* out, fu16 indentation, EdgeReferenceVector* value) {
-    printDebugEdgeReferenceVector(out, indentation, value);
+    return printDebugEdgeReferenceVector(out, indentation, value);
 }
     #endif
         #include "genericHashmap.c"

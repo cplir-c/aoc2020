@@ -20,52 +20,78 @@ static bool appendChars(charVector* out, fu16 repetitions, char character) {
         fprintf(stderr, "failed to append %zu of '%c' to charVector %p\n", repetitions, character, (void*) out);
         return false;
     }
-    memset(targetPosition, repetitions, character);
+    memset(targetPosition, character, repetitions);
     return true;
 }
 static bool appendChar(charVector* out, char character) {
     char* put = addItemcharVector(out, &character);
     return put != NULL;
 }
-static bool appendNullString(charVector* out, char* nullString) {
+static bool appendNullString(charVector* out, char const* const nullString) {
     usize strLength = strlen(nullString);
     if (strLength == 0) {
-        fprintf(stderr, "failed to add string at %p to charVector %p\n", (void*) nullString, (void*) out);
+        fprintf(stderr, "failed to add string at %p to charVector %p\n", (void const* const) nullString, (void*) out);
         return false;
     }
-    --strLength; // forget the null
     char* targetPosition = addBlockcharVector(out, strLength);
     memcpy(targetPosition, nullString, strLength);
     return true;
 }
 
-static bool appendLine(charVector* out, fu16 indentation, char* nullString) {
+static bool appendLine(charVector* out, fu16 indentation, char const* const nullString) {
+    fprintf(stderr, "charVector out %p, fu16 indentation %lu, char* nullString %p \"%s\"\n", (void*) out, indentation, (void*) nullString, nullString);
     return appendChars(out, indentation, ' ')
         && appendNullString(out, nullString)
         && appendChar(out, '\n');
 }
 // line without the \n
-static bool appendLie(charVector* out, fu16 indentation, char* nullString) {
+static bool appendLie(charVector* out, fu16 indentation, char const* const nullString) {
     return appendChars(out, indentation, ' ')
         && appendNullString(out, nullString);
 }
 
-static bool appendHexSizeT(charVector* out, fu16 in) {
+static bool appendHexSizeT(charVector* out, usize in) {
     char* dest = addBlockcharVector(out, sizeof(usize) * 4 + 2);
-    size_t written = 0;
-    sprintf(dest, "%zn0x%zx", (signed) &written, in);
-    removeBlockcharVector(out, sizeof(usize) * 4 + 2 - written);
+    if (dest == NULL) {
+        fprintf(stderr, "failed to append hex size_t %zx to output char vector@%p\n", in, (void*) out);
+        return false;
+    }
+    long written = 0;
+    sprintf(dest, "0x%zx%zn", in, &written);
+    //--written; // delete the null byte
+    return removeBlockcharVector(out, sizeof(usize) * 4 + 2 - ((usize)written));
 }
 static bool appendSizeT(charVector* out, usize in) {
     char* dest = addBlockcharVector(out, sizeof(usize) * 4);
-    size_t written = 0;
-    sprintf(dest, "%zn%zu", &written, in);
-    removeBlockcharVector(out, sizeof(usize) * 4 - written);
+    if (dest == NULL) {
+        fprintf(stderr, "failed to append size_t %zu to output char vector@%p\n", in, (void*) out);
+        return false;
+    }
+    long written = 0;
+    sprintf(dest, "%zu%zn", in, &written);
+    //--written; // delete the null byte
+    return removeBlockcharVector(out, sizeof(usize) * 4 - ((usize)written));
 }
 static bool appendPointer(charVector* out, void* in) {
     char* dest = addBlockcharVector(out, sizeof(void*) * 4);
-    size_t written = 0;
-    sprintf(dest, "%zn%p", &written, in);
-    removeBlockcharVector(out, sizeof(void*) * 4 - written);
+    if (dest == NULL) {
+        fprintf(stderr, "failed to append pointer %p to output char vector@%p\n", in, (void*) out);
+        return false;
+    }
+    long written = 0;
+    sprintf(dest, "%p%zn", in, &written);
+    //--written; // delete the null byte
+    return removeBlockcharVector(out, sizeof(usize) * 4 - ((usize)written));
+}
+static bool appendDouble(charVector* out, double in) {
+    char* dest = addBlockcharVector(out, sizeof(double) * 8);
+    if (dest == NULL) {
+        fprintf(stderr, "failed to append double %g to output char vector@%p\n", in, (void*) out);
+        return false;
+    }
+    long written = 0;
+    sprintf(dest, "%g%zn", in, &written);
+    //--written; // delete the null byte
+    return removeBlockcharVector(out, sizeof(double) * 8 - ((usize)written));
 }
 #endif

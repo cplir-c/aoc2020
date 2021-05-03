@@ -42,15 +42,15 @@ bool vectorMethod(trimToSize) (Vector* vector, usize newSize);
         #endif
 
 // Block methods: end of this vector
-E* vectorMethod(addBlock) (Vector* vector, usize count);
+WideE vectorMethod(addBlock) (Vector* vector, usize count);
 bool vectorMethod(removeBlock) (Vector* vector, usize count);
 bool vectorMethod(popBlock) (Vector* vector, usize count, WideE out);
 // Segment methods: index in this vector
-E* vectorMethod(addSegment) (Vector* vector, usize index, usize count);
+WideE vectorMethod(addSegment) (Vector* vector, usize index, usize count);
 bool vectorMethod(removeSegment) (Vector* vector, usize index, usize count);
 bool vectorMethod(popSegment) (Vector* vector, usize index, usize count, WideE out);
 // Array methods: array contained in the vector
-E* vectorMethod(addArray) (Vector* vector, usize count, WideE array);
+WideE vectorMethod(addArray) (Vector* vector, usize count, WideE array);
 bool vectorMethod(removeArray) (Vector* vector, usize count, WideE array);
 bool vectorMethod(popArray) (Vector* vector, usize count, WideE array, WideE out);
 

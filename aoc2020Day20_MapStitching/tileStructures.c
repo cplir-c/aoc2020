@@ -1,17 +1,21 @@
 #include "tileStructures.h"
-#include "charVector.c"
 
 #ifndef __TILE_STRUCTURES_C
     #define __TILE_STRUCTURES_C 1
     #ifdef DEBUG
+    #include "charVector.c"
 static char const* const SIDE_STRING[4] = {"Top", "Right", "Bottom", "Left"};
 static char const* const FORBACKWARD_STRINGS[2] = {"forward", "backward"};
 
 usize printDebugVoid(charVector* out, fu16 indentation, Void* vuid) {
+    usize startSize = indentation;
+    startSize = out -> contentCount;
     appendNullString(out, "Void@");
     appendPointer(out, (void*) vuid);
+    return (out -> contentCount) - startSize;
 }
 usize printDebugEdge(charVector* out, fu16 indentation, Edge* edge) {
+    usize startSize = out -> contentCount;
     appendNullString(out, "(Edge) {\n");
 
     appendLie(out, indentation + 4, ".forwardString = (char*) \"");
@@ -31,8 +35,10 @@ usize printDebugEdge(charVector* out, fu16 indentation, Edge* edge) {
     appendNullString(out, "\n");
 
     appendLie(out, indentation, "}");
+    return (out -> contentCount) - startSize;
 }
 usize printDebugTile(charVector* out, fu16 indentation, Tile* tile) {
+    usize startSize = out -> contentCount;
     appendLine(out, 0, "(Tile) {\n");
 
     appendLie(out, indentation + 4, ".tileID = (fu16) ");
@@ -46,7 +52,7 @@ usize printDebugTile(charVector* out, fu16 indentation, Tile* tile) {
         appendNullString(out, "(char*)\n");
 
         appendLie(out, indentation + 8, "\"");
-        for (char *chPtr = tile -> unrotatedTile, chr = *chPtr; chr != '\0'; ++chPtr, chr = *chPtr) {
+        for (char* chPtr = (char*) tile -> unrotatedTile, chr = *chPtr; chr != '\0'; ++chPtr, chr = *chPtr) {
             if (chr == '\n') {
                 appendNullString(out, "\\n\"\n");
 
@@ -62,7 +68,7 @@ usize printDebugTile(charVector* out, fu16 indentation, Tile* tile) {
     {
         Side side = Top;
         while (true) {
-            Edge* edge = &((tile -> sides)[side]);
+            Edge* edge = (Edge*) &((tile -> sides)[side]);
             appendLie(out, indentation + 8, "[");
             appendNullString(out, SIDE_STRING[side]);
             appendNullString(out, "] = ");
@@ -79,12 +85,17 @@ usize printDebugTile(charVector* out, fu16 indentation, Tile* tile) {
     appendLine(out, indentation + 4, "}");
 
     appendLie(out, indentation, "}");
+    return (out -> contentCount) - startSize;
 }
 usize printDebugSide(charVector* out, fu16 indentation, Side* side) {
+    usize startSize = indentation;
+    startSize = out -> contentCount;
     appendNullString(out, "(Side) ");
     appendNullString(out, SIDE_STRING[*side]);
+    return (out -> contentCount) - startSize;
 }
 usize printDebugEdgeReference(charVector* out, fu16 indentation, EdgeReference* element) {
+    usize startSize = out -> contentCount;
     appendNullString(out, "(EdgeReference) {\n");
 
     appendLie(out, indentation + 4, ".backwards = ");
@@ -108,6 +119,7 @@ usize printDebugEdgeReference(charVector* out, fu16 indentation, EdgeReference* 
     }
 
     appendLie(out, indentation, "}");
+    return (out -> contentCount) - startSize;
 }
     #endif
 #endif

@@ -1,6 +1,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #ifndef __BUILD_TILE_STRUCTURES_C
 #define __BUILD_TILE_STRUCTURES_C 1
@@ -50,11 +51,11 @@ static bool buildEdgeMap(TileVector* tiles, fu16ToEdgeReferenceVectorOpenHashMap
         #ifdef DEBUG
         printf("edging tile id %lu %s\n", tile -> tileID, tile -> unrotatedTile);
         #endif
-        Edge* edge = &((*tile).sides[Top]);
+        Edge const* edge = &((tile -> sides)[0]);
         fu16 edgeIndex = 0;
-        for (; edgeIndex < 4; ++edgeIndex, ++edge) {
+        for (; edgeIndex < SIDE_COUNT; ++edgeIndex, ++edge) {
             #ifdef DEBUG
-            printf("%p edge is %ld bytes from the %p tile of size %lu\n", (void*) edge, ((isize) tile) - ((isize) edge), (void*) tile, sizeof(Tile));
+            printf("%p edge is %ld bytes from the %p tile of size %lu\n", (void*) edge, ((isize) edge) - ((isize) tile), (void*) tile, sizeof(Tile));
             #endif
             fu16 edgeInteger = edge -> backward;
             #ifdef DEBUG

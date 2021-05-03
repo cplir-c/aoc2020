@@ -5,14 +5,15 @@
     #define __TILE_STRUCTURES_H 1
 
 typedef struct {
+    _Bool $;
 } Void;
     #ifdef DEBUG
 usize printDebugVoid(charVector* out, fu16 indentation, Void* vuid);
     #endif
 
 typedef struct {
-    char* forwardString;
-    char* backwardString;
+    char const* forwardString;
+    char const* backwardString;
     fu16 forward;
     fu16 backward;
 } Edge;
@@ -20,10 +21,11 @@ typedef struct {
 usize printDebugEdge(charVector* out, fu16 indentation, Edge* edge);
     #endif
 
+#define SIDE_COUNT 4
 typedef struct {
     fu16 tileID;
-    char* unrotatedTile;
-    Edge sides[4];
+    char const* unrotatedTile;
+    Edge sides[SIDE_COUNT];
 } Tile;
     #ifdef DEBUG
 usize printDebugTile(charVector* out, fu16 indentation, Tile* tile);
