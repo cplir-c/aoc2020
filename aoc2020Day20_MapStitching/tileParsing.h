@@ -37,7 +37,7 @@ static bool constructTileFromTileString(char const* tileString, TileVector* tile
  * edge strings in an Edge* into fu16 bit patterns, and
  * puts them back in the same Edge*
  */
-static bool constructIntEdgeFromCharEdge(struct MutEdge* edge);
+static bool constructIntEdgeFromCharEdge(Edge* edge);
 /* parseRowFromRowString parses a single edge string into its fu16 bit pattern */
 static fu16 parseRowFromRowString(char const* rowString);
 

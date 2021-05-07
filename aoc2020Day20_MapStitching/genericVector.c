@@ -187,7 +187,7 @@ bool vectorMethod(trimToSize) (Vector* vector, usize newSize) {
 
 // Block methods: end of this vector
 WideE vectorMethod(addBlock) (Vector* vector, usize count) {
-    if (!vectorMethod(preallocateSpace)(vector, (vector -> contentCount) + count)) {
+    if (!vectorMethod(preallocateSpace)(vector, count)) {
         fprintf(stderr, "failed to allocate block of %zu items in a " EString " vector, returning NULL\n", count);
         return NULL;
     }

@@ -39,10 +39,13 @@ static bool appendNullString(charVector* out, char const* const nullString) {
 }
 
 static bool appendLine(charVector* out, fu16 indentation, char const* const nullString) {
-    fprintf(stderr, "charVector out %p, fu16 indentation %lu, char* nullString %p \"%s\"\n", (void*) out, indentation, (void*) nullString, nullString);
-    return appendChars(out, indentation, ' ')
-        && appendNullString(out, nullString)
-        && appendChar(out, '\n');
+    if (!appendChars(out, indentation, ' ')
+        || !appendNullString(out, nullString)
+        || !appendChar(out, '\n')) {
+        fprintf(stderr, "failed to print line: charVector out %p, fu16 indentation %lu, char* nullString %p \"%s\"\n", (void*) out, indentation, (void*) nullString, nullString);
+        return false;
+    }
+    return true;
 }
 // line without the \n
 static bool appendLie(charVector* out, fu16 indentation, char const* const nullString) {

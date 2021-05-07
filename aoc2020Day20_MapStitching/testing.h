@@ -1,5 +1,9 @@
 #include <stdbool.h>
 
+static void initializeCorrectTile();
+static void initializedEdgeParsingTestEdge();
+static void initializeCorrectEdgeMap();
+
 static bool runTests();
 static bool testRowParsing();
 static bool testEdgeParsing();

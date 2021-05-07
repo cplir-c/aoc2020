@@ -48,21 +48,21 @@ static bool buildEdgeMap(TileVector* tiles, fu16ToEdgeReferenceVectorOpenHashMap
             fprintf(stderr, "failed to index tiles properly with index %lu\n", tileIndex);
             return false;
         }
-        #ifdef DEBUG
+        #ifdef VERBOSE_DEBUG
         printf("edging tile id %lu %s\n", tile -> tileID, tile -> unrotatedTile);
         #endif
         Edge const* edge = &((tile -> sides)[0]);
         fu16 edgeIndex = 0;
         for (; edgeIndex < SIDE_COUNT; ++edgeIndex, ++edge) {
-            #ifdef DEBUG
+            #ifdef VERBOSE_DEBUG
             printf("%p edge is %ld bytes from the %p tile of size %lu\n", (void*) edge, ((isize) edge) - ((isize) tile), (void*) tile, sizeof(Tile));
             #endif
             fu16 edgeInteger = edge -> backward;
-            #ifdef DEBUG
+            #ifdef VERBOSE_DEBUG
             printf("index %lu edge integer %lu\n", edgeIndex, edgeInteger);
             #endif
             for (fu8 loop = 0; loop < 2; ++loop, edgeInteger = edge -> forward) {
-                #ifdef DEBUG
+                #ifdef VERBOSE_DEBUG
                 printf("backwards? %hhu\n", (u8) (loop > 1));
                 #endif
                 EdgeReference edgeRef;

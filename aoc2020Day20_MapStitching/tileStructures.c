@@ -18,11 +18,11 @@ usize printDebugEdge(charVector* out, fu16 indentation, Edge* edge) {
     usize startSize = out -> contentCount;
     appendNullString(out, "(Edge) {\n");
 
-    appendLie(out, indentation + 4, ".forwardString = (char*) \"");
+    appendLie(out, indentation + 4, ".forwardString = (char const*) \"");
     appendNullString(out, edge -> forwardString);
     appendNullString(out, "\",\n");
 
-    appendLie(out, indentation + 4, ".backwardString = (char*) \"");
+    appendLie(out, indentation + 4, ".backwardString = (char const*) \"");
     appendNullString(out, edge -> backwardString);
     appendNullString(out, "\",\n");
 
@@ -39,7 +39,7 @@ usize printDebugEdge(charVector* out, fu16 indentation, Edge* edge) {
 }
 usize printDebugTile(charVector* out, fu16 indentation, Tile* tile) {
     usize startSize = out -> contentCount;
-    appendLine(out, 0, "(Tile) {\n");
+    appendLine(out, 0, "(Tile) {");
 
     appendLie(out, indentation + 4, ".tileID = (fu16) ");
     appendSizeT(out, (usize) (tile -> tileID));
@@ -49,7 +49,7 @@ usize printDebugTile(charVector* out, fu16 indentation, Tile* tile) {
     if (tile -> unrotatedTile == NULL) {
         appendNullString(out, "NULL");
     } else {
-        appendNullString(out, "(char*)\n");
+        appendNullString(out, "(char const*)\n");
 
         appendLie(out, indentation + 8, "\"");
         for (char* chPtr = (char*) tile -> unrotatedTile, chr = *chPtr; chr != '\0'; ++chPtr, chr = *chPtr) {
@@ -61,10 +61,11 @@ usize printDebugTile(charVector* out, fu16 indentation, Tile* tile) {
                 appendChar(out, chr);
             }
         }
-        appendNullString(out, "\"\n");
+        appendChar(out, '\"');
     }
+    appendNullString(out, ",\n");
 
-    appendLie(out, indentation + 4, ".sides = (Edge[4]) {");
+    appendLine(out, indentation + 4, ".sides = (Edge[4]) {");
     {
         Side side = Top;
         while (true) {
@@ -99,16 +100,18 @@ usize printDebugEdgeReference(charVector* out, fu16 indentation, EdgeReference* 
     appendNullString(out, "(EdgeReference) {\n");
 
     appendLie(out, indentation + 4, ".backwards = ");
-    appendChar(out, '0' + (element -> backwards));
-    appendNullString(out, "// ");
+    appendNullString(out, ((char*[2]) {"false", "true"})[element -> backwards]);
+    appendChar(out, ',');
+    appendNullString(out, " // ");
     appendNullString(out, FORBACKWARD_STRINGS[element -> backwards]);
-    appendNullString(out, ",\n");
+    appendChar(out, '\n');
 
     appendLie(out, indentation + 4, ".side = ");
     appendSizeT(out, element -> side);
-    appendNullString(out, "// ");
+    appendChar(out, ',');
+    appendNullString(out, " // ");
     appendNullString(out, SIDE_STRING[element -> side]);
-    appendNullString(out, ",\n");
+    appendChar(out, '\n');
 
     if (element -> tile != NULL) {
         appendLie(out, indentation + 4, ".tile = ");

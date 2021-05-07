@@ -103,6 +103,7 @@ _Bool hashMapMethod(__growContents) (HashMap* map) {
     // expand the map's fill levels
     map -> growFillLevel <<= 1;
     map -> shrinkFillLevel <<= 1;
+    ++(map -> sizeTwoPower);
     // record the old size and expand the map's size
     usize oldSize = map -> size;
     usize size = (map -> size <<= 1);
@@ -118,6 +119,7 @@ _Bool hashMapMethod(__growContents) (HashMap* map) {
     if (contents == NULL) {
         // if it failed, revert the expanded fill levels, mask, and size
         map -> size = oldSize;
+        --(map -> sizeTwoPower);
         (map -> bucketMask) >>= 1;
         map -> growFillLevel >>= 1;
         map -> shrinkFillLevel >>= 1;
@@ -133,9 +135,11 @@ _Bool hashMapMethod(__growContents) (HashMap* map) {
     }
     // rehash the buckets
     targetBucket = contents;
+    fu8 sizeTwoPower = map -> sizeTwoPower;
     for (usize i = 0; i < oldSize; ++targetBucket, ++i) {
         usize bucketHash = targetBucket -> hash;
-        if ((bucketHash & bucketMask) != i) {
+        usize spreadBucketHash = spreadBits(bucketHash, sizeTwoPower);
+        if ((spreadBucketHash & bucketMask) != i) {
             // copy the bucket to the stack
             K key = targetBucket -> key;
             V value = targetBucket -> value;
@@ -236,7 +240,7 @@ Bucket* hashMapMethod(__addItem) (HashMap* map, K* key, V* value, usize keyHash)
             // fallthrough to return pointed bucket
         } else {
             // hashmap is too full, empty the bucket and return null
-            pointed -> hash = 0;
+            pointed -> hash = SIZE_MAX;
             -- (map -> contentCount);
             return NULL;
         }
@@ -446,31 +450,31 @@ usize hashMapMethod(printDebugHeader) (charVector* out, fu16 indentation, HashMa
 }
 usize hashMapMethod(printDebugContentsArray)(charVector* out, fu16 indentation, HashMap* map) {
     usize startSize = out -> contentCount;
-    usize contentCount = map -> contentCount;
+    usize size = map -> size;
     appendLie(out, indentation + 4, ".contents = (" BucketString "*) (" BucketString "[");
-    appendSizeT(out, contentCount);
-    appendNullString(out, "]) {\n");
+    appendSizeT(out, size);
+    appendNullString(out, "]) {\n\n");
 
-    for (usize i = 0; i < contentCount; ++i){
+    for (usize i = 0; i < size; ++i){
         appendLie(out, indentation + 8, "[");
         appendSizeT(out, i);
-        appendNullString(out, "] = (" BucketString ") ");
+        appendNullString(out, "] = ");
 
         Bucket* bucket = (map -> contents) + i;
         if (bucket -> hash == SIZE_MAX) {
             appendNullString(out, "EMPTY_BUCKET,\n");
         } else {
-            appendNullString(out, "{\n");
+            appendNullString(out, "(" BucketString ") {\n");
 
             appendLie(out, indentation + 12, ".hash = ");
             appendSizeT(out, bucket -> hash);
             appendNullString(out, ",\n");
 
-            appendLie(out, indentation + 12, ".key = (" KString ") ");
+            appendLie(out, indentation + 12, ".key = ");
             printDebugKey(out, indentation + 12, &(bucket -> key));
             appendNullString(out, ",\n");
 
-            appendLie(out, indentation + 12, ".value = (" VString ") ");
+            appendLie(out, indentation + 12, ".value = ");
             printDebugValue(out, indentation + 12, &(bucket -> value));
             appendNullString(out, ",\n");
 
