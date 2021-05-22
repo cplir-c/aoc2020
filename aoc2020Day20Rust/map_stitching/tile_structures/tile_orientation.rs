@@ -2,7 +2,7 @@
 use super::Side;
 use super::SideIterator;
 
-#[derive(Debug, Default, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 pub struct TileOrientation {
     pub top_side: Side,
     pub top_flipped: bool

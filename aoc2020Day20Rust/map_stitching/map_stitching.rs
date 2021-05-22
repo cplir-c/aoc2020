@@ -19,7 +19,7 @@ fn gather_errors<T>(accum: Result<Vec<T>, String>, item: Result<T, String>) -> R
     }
 }
 
-pub fn find_corner_ID_product(tiles_string: &'static str) -> Result<u64, String> {
+pub fn find_corner_id_product(tiles_string: &'static str) -> Result<u64, String> {
     let tile_count = tiles_string.split("\n\n").count();
     println!("tile count: {}", tile_count);
     // collect tile strings
@@ -31,7 +31,7 @@ pub fn find_corner_ID_product(tiles_string: &'static str) -> Result<u64, String>
     // parse tiles
     type BoxStr = Box<str>;
     let tiles_result: Result<Vec<Tile<BoxStr>>, String> = tiles_strings.iter()
-        .map(|string| {Tile::parse(*string)})
+        .map(|string| {Tile::<BoxStr>::parse(*string)})
         .fold(Result::Ok(Vec::with_capacity(tile_count)), gather_errors);
     // return errors if tile parsing failed
     let tiles: Vec<Tile<BoxStr>> = match tiles_result {
@@ -60,8 +60,8 @@ pub fn find_corner_ID_product(tiles_string: &'static str) -> Result<u64, String>
     }
     
     println!("build data structures, calculating tile map...");
-    let corner_ID_product = piece_together_map(&tiles, &edge_map);
-    match corner_ID_product {
+    let corner_id_product = piece_together_map(&tiles, &edge_map);
+    match corner_id_product {
         Some(product) => Ok(product),
         None => Err(format!("failed to build map with edges {:?}...\nplacement map:\n{}", edge_map, MapDisplay(all_placements.as_slice())))
     }
@@ -74,10 +74,10 @@ fn get_corner_product<S: Borrow<str>>(map_edge_length: usize, placements: &[Tile
     }
     print!("Map pieced together:\n{}", MapDisplay(placements));
     let tile_count = map_edge_length * map_edge_length;
-    let mut result: u64 = placements[0].tile.tile_ID as u64;
-    result *= placements[map_edge_length - 1].tile.tile_ID as u64;
-    result *= placements[tile_count - 1].tile.tile_ID as u64;
-    result *= placements[tile_count - map_edge_length].tile.tile_ID as u64;
+    let mut result: u64 = placements[0].tile.tile_id as u64;
+    result *= placements[map_edge_length - 1].tile.tile_id as u64;
+    result *= placements[tile_count - 1].tile.tile_id as u64;
+    result *= placements[tile_count - map_edge_length].tile.tile_id as u64;
     result
 }
 
@@ -87,24 +87,24 @@ fn piece_together_map<'a, S: Borrow<str> + Clone>(tiles: &[Tile<'a, S>], edge_ma
     let edge_length = isqrt(tile_count);
     print!("tile count: {}, map side length: {}", tile_count, edge_length);
     let mut placements = Vec::<TilePlacement<S>>::with_capacity(tile_count);
-    let mut placed_tile_IDs = HashSet::<EdgeBits>::with_capacity(tile_count);
+    let mut placed_tile_ids = HashSet::<EdgeBits>::with_capacity(tile_count);
     let mut edge_reference_slices = Vec::<&[EdgeReference<S>]>::with_capacity(tile_count);
     
     edge_reference_slices.push(&[]);
     for tile in tiles {
-        placed_tile_IDs.insert(tile.tile_ID);
+        placed_tile_ids.insert(tile.tile_id);
         for placement in tile {
             placements.push(placement);
             
             let success: bool = backtrack_stitching(tile_count, edge_length, edge_map,
-                &mut placements, &mut placed_tile_IDs, &mut edge_reference_slices);
+                &mut placements, &mut placed_tile_ids, &mut edge_reference_slices);
             if success {
                 return Some(get_corner_product(edge_length, placements.as_slice()));
             }
             
             placements.pop();
         }
-        placed_tile_IDs.remove(&tile.tile_ID);
+        placed_tile_ids.remove(&tile.tile_id);
     }
     None
 }
@@ -116,7 +116,7 @@ fn piece_together_map<'a, S: Borrow<str> + Clone>(tiles: &[Tile<'a, S>], edge_ma
 /// a solution to edge matching by backtracking 
 /// 
 fn backtrack_stitching<'a, 'b, S: Borrow<str> + Clone>(tile_count: usize, map_side_length: usize, edge_map: &'a EdgeMap<'a, 'a, S>,
-                      placements: &'b mut Vec<TilePlacement<'a, 'a, S>>, placed_tile_IDs: &'b mut HashSet<EdgeBits>,
+                      placements: &'b mut Vec<TilePlacement<'a, 'a, S>>, placed_tile_ids: &'b mut HashSet<EdgeBits>,
                       edge_reference_slices: &'b mut Vec<&'a [EdgeReference<'a, 'a, S>]>) -> bool {
     loop {
         println!("stack depth: {}", placements.len());
@@ -179,7 +179,7 @@ fn backtrack_stitching<'a, 'b, S: Borrow<str> + Clone>(tile_count: usize, map_si
         };
         
         let possible_placeable_placement_index: Option<usize> = source_slice.iter().position(|placement| {
-            !placed_tile_IDs.contains(&placement.placement.tile.tile_ID)
+            !placed_tile_ids.contains(&placement.placement.tile.tile_id)
          && (!filter_left || Some(EdgePlacement::from(placement)) == left_bits)
          // assertions of edge map soundness
          && (filter_left || left_bits.map_or(true, |left_bits|{
@@ -201,7 +201,7 @@ fn backtrack_stitching<'a, 'b, S: Borrow<str> + Clone>(tile_count: usize, map_si
                 };
                 let last_placed_tile: &Tile<S> = last_placement.tile;
                 let removed: bool =
-                    placed_tile_IDs.remove(&last_placed_tile.tile_ID)
+                    placed_tile_ids.remove(&last_placed_tile.tile_id)
                  && placements.pop().is_some()
                  && edge_reference_slices.pop().is_some();
                 removed
@@ -213,7 +213,7 @@ fn backtrack_stitching<'a, 'b, S: Borrow<str> + Clone>(tile_count: usize, map_si
                 let good_placement: &EdgeReference<S> = &source_slice[placement_index];
                 
                 placements.push(good_placement.placement);
-                let inserted: bool = placed_tile_IDs.insert(good_placement.placement.tile.tile_ID);
+                let inserted: bool = placed_tile_ids.insert(good_placement.placement.tile.tile_id);
                 // check if this solved it
                 if placements.len() == tile_count {
                     return true;

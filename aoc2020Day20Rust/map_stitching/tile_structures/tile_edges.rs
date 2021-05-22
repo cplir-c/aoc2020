@@ -2,7 +2,6 @@
 use std::ops::Index;
 use std::borrow::Borrow;
 
-use super::edges::DirectedEdge;
 use super::edges::Edge;
 use super::edges::EdgeBits;
 use super::sides::Side;
@@ -10,33 +9,6 @@ use super::sides::Side;
 type AllocEdge<S> = Edge<S, S>;
 type SemiOwnedEdge<'a, S> = Edge<&'a str, S>;
 type BorrowedEdge<'a> = Edge<&'a str, &'a str>;
-
-impl<'a> BorrowedEdge<'a> {
-    fn from_alloc<S: Borrow<str>>(edge: &'a AllocEdge<S>) -> Self {
-        BorrowedEdge {
-            forward: DirectedEdge {
-                string: (&edge.forward.string).borrow(),
-                bits: edge.forward.bits
-            },
-            backward: DirectedEdge {
-                string: (&edge.backward.string).borrow(),
-                bits: edge.backward.bits
-            }
-        }
-    }
-    fn from_semi_owned<S: Borrow<str>>(edge: &'a SemiOwnedEdge<'a, S>) -> Self {
-        BorrowedEdge {
-            forward: DirectedEdge {
-                string: (&edge.forward.string).borrow(),
-                bits: edge.forward.bits
-            },
-            backward: DirectedEdge {
-                string: (&edge.backward.string).borrow(),
-                bits: edge.backward.bits
-            }
-        }
-    }
-}
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct TileEdges<'a, S: Borrow<str>> {
@@ -49,10 +21,10 @@ pub struct TileEdges<'a, S: Borrow<str>> {
 impl<'a, S: Borrow<str>> TileEdges<'a, S> {
     fn get_edge(&self, index: Side) -> BorrowedEdge {
         match index {
-            Side::Top => BorrowedEdge::from_semi_owned(&self.top),
-            Side::Right => BorrowedEdge::from_alloc(&self.right),
-            Side::Bottom => BorrowedEdge::from_semi_owned(&self.bottom),
-            Side::Left => BorrowedEdge::from_alloc(&self.left)
+            Side::Top => Edge::to_borrowed(&self.top),
+            Side::Right => Edge::to_borrowed(&self.right),
+            Side::Bottom => Edge::to_borrowed(&self.bottom),
+            Side::Left => Edge::to_borrowed(&self.left)
         }
     }
     pub fn index_edge(&self, index: Side, backwards: bool) -> &EdgeBits {

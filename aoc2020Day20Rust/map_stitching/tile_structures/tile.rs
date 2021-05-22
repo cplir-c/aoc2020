@@ -13,7 +13,7 @@ use crate::map_stitching::tile_structures::edges::EdgeBits;
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Tile<'a, S: Borrow<str>> {
-    pub tile_ID: u16,
+    pub tile_id: u16,
     pub body_string: &'a str,
     pub edges: TileEdges<'a, S>
 }
@@ -35,7 +35,7 @@ impl<'a, S: Borrow<str> + Default + From<String>> Tile<'a, S> {
         string = match string.split_once(":\n") {
             None => { return Err(format!("Error parsing tile: did not find \":\\n\":\n{}", string)); },
             Some((line, rest)) => {
-                tile.tile_ID = match line.parse::<u16>() {
+                tile.tile_id = match line.parse::<u16>() {
                     Err(err) => { return Err(format!("Error parsing tile: could not parse tileID from {}\ngot an error of {}", line, err)) },
                     Ok(id) => id
                 };
@@ -89,7 +89,7 @@ mod tests {
     use super::Tile;
     use super::super::edges::{Edge, DirectedEdge};
     use super::super::tile_edges::TileEdges;//45678901
-    const TEST_TILE_STR: &'static str = r#"Tile 1024:
+    static TEST_TILE_STR: &str = r#"Tile 1024:
 #..#.##..#
 #.#..#.##.
 #..##..#.#
@@ -102,7 +102,7 @@ mod tests {
 #.#..##..#"#;
     use std::borrow::Cow;
     static TEST_TILE: Tile<MyStr> = Tile {
-        tile_ID: 1024,
+        tile_id: 1024,
         body_string: r#"#..#.##..#
 #.#..#.##.
 #..##..#.#

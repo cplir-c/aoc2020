@@ -13,8 +13,8 @@ pub struct EdgePlacement {
     pub bits: EdgeBits
 }
 
-impl<'a, 'b, S: Borrow<str>> From<EdgeReference<'a, 'b, S>> for EdgePlacement {
-    fn from(edge_ref: EdgeReference<'a, 'b, S>) -> Self {
+impl<'a, 'b, S: Borrow<str>> From<&EdgeReference<'a, 'b, S>> for EdgePlacement {
+    fn from(edge_ref: &EdgeReference<'a, 'b, S>) -> Self {
         EdgePlacement {
             side: edge_ref.side,
             bits: edge_ref.placement[edge_ref.side]
@@ -22,12 +22,9 @@ impl<'a, 'b, S: Borrow<str>> From<EdgeReference<'a, 'b, S>> for EdgePlacement {
     }
 }
 
-impl<'a, 'b, S: Borrow<str>> From<&EdgeReference<'a, 'b, S>> for EdgePlacement {
-    fn from(edge_ref: &EdgeReference<'a, 'b, S>) -> Self {
-        EdgePlacement {
-            side: edge_ref.side,
-            bits: edge_ref.placement[edge_ref.side]
-        }
+impl<'a, 'b, S: Borrow<str>> From<EdgeReference<'a, 'b, S>> for EdgePlacement {
+    fn from(edge_ref: EdgeReference<'a, 'b, S>) -> Self {
+        EdgePlacement::from(&edge_ref)
     }
 }
 
@@ -43,7 +40,7 @@ impl<'a, 'b, S: Borrow<str>> Iterator for PlacementEdgePlacementIterator<'a, 'b,
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EdgeReference<'a, 'b, S: Borrow<str>> {
     pub side: Side,
     pub placement: TilePlacement<'a, 'b, S>

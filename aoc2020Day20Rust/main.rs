@@ -3,7 +3,7 @@
 mod map_stitching;
 
 fn main() {
-    let product = map_stitching::find_corner_ID_product(EXAMPLE_TILES_STRING_INPUT);
+    let product = map_stitching::find_corner_id_product(EXAMPLE_TILES_STRING_INPUT);
     if product != Ok(EXAMPLE_CORRECT_CORNER_PRODUCT) {
         println!("failed example test:\n    got {:#?}, but expected {:#?}", product, EXAMPLE_CORRECT_CORNER_PRODUCT);
     } else {

@@ -27,7 +27,7 @@ use super::edge_placement::EdgeReference;
 use super::edge_placement::PlacementEdgePlacementIterator;
 use super::edge_placement::PlacementEdgeReferenceIterator;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TilePlacement<'a, 'b, S: Borrow<str>> {
     pub orientation: TileOrientation,
     pub tile: &'b Tile<'a, S>

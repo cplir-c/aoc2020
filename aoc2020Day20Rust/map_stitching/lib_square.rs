@@ -125,8 +125,8 @@ impl<'a, 'b, T: fmt::Display> fmt::Display for MapDisplay<'a, T> {
             }
         }
         let total_width: usize = widths.iter().sum::<usize>() + edge_length;
-        let total_height: usize = heights.iter().sum::<usize>() + edge_length - 1;
-        let max_height: usize = *heights.iter().max().unwrap_or(&1);
+        let _total_height: usize = heights.iter().sum::<usize>() + edge_length - 1;
+        let _max_height: usize = *heights.iter().max().unwrap_or(&1);
         
         let spaces = |n| {repeat(' ').take(n)};
         let mut tile_strs: Vec<&str> = Vec::with_capacity(edge_length);

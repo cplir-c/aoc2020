@@ -81,3 +81,17 @@ impl<F: Borrow<str>, B: Borrow<str>> Index<bool> for Edge<F, B> {
         }
     }
 }
+impl<F: Borrow<str>, B: Borrow<str>> Edge<F, B> {
+    pub fn to_borrowed(&self) -> Edge<&str, &str> {
+        Edge::<&str, &str> {
+            forward: DirectedEdge {
+                string: &Borrow::borrow(&self.forward.string),
+                bits: self.forward.bits
+            },
+            backward: DirectedEdge {
+                string: &Borrow::borrow(&self.backward.string),
+                bits: self.backward.bits
+            }
+        }
+    }
+}

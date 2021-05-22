@@ -1,7 +1,4 @@
 
-use std::borrow::Borrow;
-use std::collections::HashMap;
-use std::convert::From;
 
 mod sides;
 pub use sides::Side;
@@ -27,16 +24,7 @@ mod edge_placement;
 pub use edge_placement::EdgePlacement;
 pub use edge_placement::EdgeReference;
 
-pub type EdgeMap<'a, 'b, S> = HashMap<EdgePlacement, Vec<EdgeReference<'a, 'b, S>>>;
-
-pub fn build_edge_map<'a, S: Borrow<str> + Clone>(placements: &'a[TilePlacement<'a, 'a, S>], edge_map: &mut EdgeMap<'a, 'a, S>) {
-    for tile_placement in placements {
-        for edge_reference in tile_placement.iter_edge_refs() {
-            let edge_placement = EdgePlacement::from(&edge_reference);
-            
-            edge_map.entry(edge_placement)
-                .or_default().push(edge_reference);
-        }
-    }
-}
+mod edge_map;
+pub use edge_map::EdgeMap;
+pub use edge_map::build_edge_map;
 
