@@ -1,4 +1,5 @@
 
+use super::TileOrientation;
 use std::default::Default;
 
 #[test]
@@ -29,6 +30,17 @@ fn example_test_good_assembly() {
     );
     let example_result = super::find_corner_id_product(EXAMPLE_TILES_STRING_INPUT, return_assembler)
         .expect("failed example assembly-display test");
+    
+    let out = String::with_capacity(example_result.len());
+    for orientation in TileOrientation::default() {
+        out.clear();
+        orientation.format(&mut out, EXAMPLE_MAP_ARRANGEMENT)
+            .expect("failed to write oriented example map");
+        if out.as_str() == example_result.as_str() {
+            return;
+        }
+    }
+    panic!("failed to find a matching example map orientation");
     // TODO: expand the test checking to test all 8 board orientations
 }
 

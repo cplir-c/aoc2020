@@ -30,42 +30,42 @@ pub fn reverse_str<S: From<String>>(forward_str: &str) -> S {
     S::from(string)
 }
 
-pub fn write_line(out: &mut fmt::Formatter, line: &str) -> fmt::Result {
+pub fn write_line(out: &mut impl Write, line: &str) -> fmt::Result {
     write!(out, "{}", line)
 }
 
-pub fn write_line_backwards(out: &mut fmt::Formatter, line: &str) -> fmt::Result {
+pub fn write_line_backwards(out: &mut impl Write, line: &str) -> fmt::Result {
     UnicodeSegmentation::graphemes(line, true).try_rfold((), |_unit, grap| {
         write!(out, "{}", grap)
     })
 }
-pub fn write_right_char(out: &mut fmt::Formatter, line: &mut &str) -> fmt::Result {
+pub fn write_right_char(out: &mut impl Write, line: &mut &str) -> fmt::Result {
     let last: &str = UnicodeSegmentation::graphemes(*line, true).next_back().expect("shouldn't break cause of the range limits");
     let graplen = last.len();
     *line = &line[..line.len()-graplen];
     write!(out, "{}", last)
 }
-pub fn write_left_char(out: &mut fmt::Formatter, line: &mut &str) -> fmt::Result {
+pub fn write_left_char(out: &mut impl Write, line: &mut &str) -> fmt::Result {
     let first: char = line.chars().next().expect("shouldn't break cause of the range limits");
     let chrlen = first.len_utf8();
     *line = &line[chrlen..];
     write!(out, "{}", first)
 }
 
-pub struct SquareFormat<'a, 'b>(pub &'b mut fmt::Formatter<'a>);
+pub struct SquareFormat<'a, W: Write>(pub &'a mut W);
 
-impl<'a, 'b> SquareFormat<'a, 'b>{
-    pub fn write_lines_down<F: FnMut(&mut fmt::Formatter, &str) -> fmt::Result>(self, lines: &str, mut write_line: F) -> fmt::Result {
+impl<'a, W: Write> SquareFormat<'a, W>{
+    pub fn write_lines_down<F: FnMut(&mut W, &str) -> fmt::Result>(self, lines: &str, mut write_line: F) -> fmt::Result {
         lines.lines().try_fold((), |_unit, line: &str|{
             write_line(self.0, line)
         })
     }
-    pub fn write_lines_up<F: FnMut(&mut fmt::Formatter, &str) -> fmt::Result>(self, lines: &str, mut write_line: F) -> fmt::Result {
+    pub fn write_lines_up<F: FnMut(&mut W, &str) -> fmt::Result>(self, lines: &str, mut write_line: F) -> fmt::Result {
         lines.lines().try_rfold((), |_unit, line: &str|{
             write_line(self.0, line)
         })
     }
-    pub fn write_columns_down<F: FnMut(&mut fmt::Formatter, &mut &str) -> fmt::Result>(self, lines: &str, mut write_char: F) -> fmt::Result {
+    pub fn write_columns_down<F: FnMut(&mut W, &mut &str) -> fmt::Result>(self, lines: &str, mut write_char: F) -> fmt::Result {
         let mut lines: Vec<&str> = lines.lines().collect();
         let edge_length = lines.get(0).map(|line|{ line.len() }).unwrap_or(10);
         (0..edge_length).try_fold((), |_unit, _col_index|{
@@ -74,7 +74,7 @@ impl<'a, 'b> SquareFormat<'a, 'b>{
             })
         })
     }
-    pub fn write_columns_up<F: FnMut(&mut fmt::Formatter, &mut &str) -> fmt::Result>(self, lines: &str, mut write_char: F) -> fmt::Result {
+    pub fn write_columns_up<F: FnMut(&mut W, &mut &str) -> fmt::Result>(self, lines: &str, mut write_char: F) -> fmt::Result {
         let mut lines: Vec<&str> = lines.lines().collect();
         let edge_length = lines.get(0).map(|line|{ line.len() }).unwrap_or(10);
         (0..edge_length).try_fold((), |_unit, _col_index|{

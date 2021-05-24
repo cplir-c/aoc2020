@@ -31,7 +31,7 @@ impl<S: Borrow<str>, R> ReturnAssembler<S, R> {
 
 impl<S: Borrow<str>> Default for ReturnAssembler<S, u64> {
     fn default() -> Self {
-        ReturnAssembler{fun: get_corner_product}
+        Self::new(get_corner_product)
     }
 }
 

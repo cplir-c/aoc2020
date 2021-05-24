@@ -8,6 +8,7 @@ use super::sides::Side;
 
 type AllocEdge<S> = Edge<S, S>;
 type SemiOwnedEdge<'a, S> = Edge<&'a str, S>;
+#[allow(dead_code)]
 type BorrowedEdge<'a> = Edge<&'a str, &'a str>;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -19,6 +20,7 @@ pub struct TileEdges<'a, S: Borrow<str>> {
 }
 
 impl<'a, S: Borrow<str>> TileEdges<'a, S> {
+    #[allow(dead_code)]
     fn get_edge(&self, index: Side) -> BorrowedEdge {
         match index {
             Side::Top => Edge::to_borrowed(&self.top),

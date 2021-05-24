@@ -6,12 +6,6 @@ use std::fmt::Display;
 use std::iter::IntoIterator;
 use std::ops::Index;
 
-use super::super::lib_square::SquareFormat;
-use super::super::lib_square::write_line;
-use super::super::lib_square::write_line_backwards;
-use super::super::lib_square::write_left_char;
-use super::super::lib_square::write_right_char;
-
 use super::tile_orientation::TileOrientation;
 use super::tile_orientation::TileOrientationIterator;
 
@@ -64,7 +58,7 @@ impl<'a, 'b, S: Borrow<str>> Iterator for TilePlacementIterator<'a, 'b, S> {
 }
 
 impl<'a, 'b, S: Borrow<str>> Display for TilePlacement<'a, 'b, S> {
-    fn fmt<'c>(&'c self, formatter: &'c mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         /* Fw -> Forward
          * Bw -> Backward
          * 
@@ -102,30 +96,7 @@ impl<'a, 'b, S: Borrow<str>> Display for TilePlacement<'a, 'b, S> {
          * 31
          */
         let tile_body = self.tile.body_string;
-        match self.orientation {
-            TileOrientation{top_side: Side::Top, top_flipped: false} => { formatter.write_str(tile_body) },
-            TileOrientation{top_side: Side::Top, top_flipped: true} => { // read rows backward: right to left, top down
-                SquareFormat(formatter).write_lines_down(tile_body, write_line)
-            },
-            TileOrientation{top_side: Side::Right, top_flipped: false} => { // read columns: top down, right to left
-                SquareFormat(formatter).write_columns_down(tile_body, write_right_char)
-            },
-            TileOrientation{top_side: Side::Right, top_flipped: true} => { // read columns: top down, left to right
-                SquareFormat(formatter).write_columns_down(tile_body, write_left_char)
-            },
-            TileOrientation{top_side: Side::Bottom, top_flipped: false} => { // read rows backward: right to left, bottom up
-                SquareFormat(formatter).write_lines_up(tile_body, write_line_backwards)
-            },
-            TileOrientation{top_side: Side::Bottom, top_flipped: true} => { // read rows: left to right, bottom up
-                SquareFormat(formatter).write_lines_up(tile_body, write_line)
-            },
-            TileOrientation{top_side: Side::Left, top_flipped: false} => { // read columns: bottom up, left to right
-                SquareFormat(formatter).write_columns_up(tile_body, write_left_char)
-            },
-            TileOrientation{top_side: Side::Left, top_flipped: true} => { // read columns: bottom up, right to left
-                SquareFormat(formatter).write_columns_up(tile_body, write_right_char)
-            }
-        }
+        self.orientation.format(formatter, tile_body)
     }
 }
 
