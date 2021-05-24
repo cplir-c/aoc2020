@@ -11,7 +11,7 @@ static fu64 findResult(fu16 mapSideSize, EdgeReferenceVector* placements);
  * It starts the stitching process by picking a tile and looking up its edge reference,
  * and then solving the stitching via backtracking
  */
-extern fu64 pieceTogetherMap(TileVector* tiles, fu16ToEdgeReferenceVectorOpenHashMap* edges);
+static fu64 pieceTogetherMap(TileVector* tiles, fu16ToEdgeReferenceVectorOpenHashMap* edges);
 
 /* a little helper function to get sides of rotated placements */
 static fu16* getEdgeInteger(Placement* placement, Side side);

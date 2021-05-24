@@ -1,8 +1,8 @@
 #include "shortIntNames.h"
-#include "charVector.h"
 
 #ifndef __TILE_STRUCTURES_H
     #define __TILE_STRUCTURES_H 1
+    #include "charVector.h"
 
 typedef struct {
     _Bool $;
@@ -32,7 +32,10 @@ usize printDebugTile(charVector* out, fu16 indentation, Tile* tile);
     #endif
 
 typedef enum {
-    Top, Right, Bottom, Left
+    Top = 0,
+    Right = 1,
+    Bottom = 2,
+    Left = 3
 } Side;
     #ifdef DEBUG
 usize printDebugSide(charVector* out, fu16 indentation, Side* side);

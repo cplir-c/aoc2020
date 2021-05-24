@@ -1,7 +1,7 @@
 
 #include "tileStructures.h"
 #ifndef __TILE_MAPS_H
-    #define __TILE_MAPS_H
+    #define __TILE_MAPS_H 1
 
     #include "charVector.h"
     #define E EdgeReference

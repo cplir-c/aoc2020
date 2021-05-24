@@ -33,10 +33,195 @@ static _Thread_local char const tileString[121] =
     ".##..#.##.\n"
     "#..#.##..#\n"
     "#.#..##..#";
-static _Thread_local Tile const correctTile;
-static _Thread_local Edge const edgeParsingTestEdge;
-static _Thread_local Tile const correctTile;
-static _Thread_local fu16ToEdgeReferenceVectorOpenHashMap const correctEdgeMap;
+static _Thread_local Tile correctTile = {
+    .tileID = 1024,
+    .unrotatedTile = NULL,
+    .sides = {
+        [Top] = { /* same as edge parsing test edge*/
+            .forwardString = "#..#.##..#",
+            .backwardString = "#..##.#..#",
+            .forward = 0x259,
+            .backward = 0x269
+        },
+        [Right] = {
+            .forwardString = "#.##....##",
+            .backwardString = "##....##.#",
+            .forward = 0x2c3,
+            .backward = 0x30d
+        },
+        [Bottom] = {
+            .forwardString = "#.#..##..#",
+            .backwardString = "#..##..#.#",
+            .forward = 0x299,
+            .backward = 0x265
+        },
+        [Left] = {
+            .forwardString = "#####.#.##",
+            .backwardString = "##.#.#####",
+            .forward = 0x3eb,
+            .backward = 0x35f
+        }
+    }
+};
+static _Thread_local Edge edgeParsingTestEdge;
+#define EMPTY_BUCKET { .hash = SIZE_MAX, .key = UINT_FAST16_MAX, .value = { .size = 0, .contentCount = 0, .contents = NULL } }
+static _Thread_local fu16ToEdgeReferenceVectorOpenHashMap correctEdgeMap = (fu16ToEdgeReferenceVectorOpenHashMap) {
+    .loadFactor = 0.5,
+    .growFillLevel = 16,
+    .shrinkFillLevel = 0,
+    .contentCount = 8,
+    .size = 32,
+    .bucketMask = 0x1f,
+    .minimumSize = 32,
+    .sizeTwoPower = 6,
+    .contents = (fu16ToEdgeReferenceVectorHashBucket*) (fu16ToEdgeReferenceVectorHashBucket[32]) {
+        [0] = EMPTY_BUCKET,
+        [1] = EMPTY_BUCKET,
+        [2] = EMPTY_BUCKET,
+        [3] = EMPTY_BUCKET,
+        [4] = EMPTY_BUCKET,
+        [5] = EMPTY_BUCKET,
+        [6] = EMPTY_BUCKET,
+        [7] = EMPTY_BUCKET,
+        [8] = EMPTY_BUCKET,
+        [9] = EMPTY_BUCKET,
+        [10] = EMPTY_BUCKET,
+        [11] = {
+            .hash = 781,
+            .key = 781,
+            .value = {
+                .size = 4,
+                .contentCount = 1,
+                .contents = (EdgeReference[1]) {
+                    [0] = {
+                        .backwards = false, // forward
+                        .side = 1, // Right
+                        .tile = NULL
+                    }
+                }
+            },
+        },
+        [12] = EMPTY_BUCKET,
+        [13] = EMPTY_BUCKET,
+        [14] = EMPTY_BUCKET,
+        [15] = EMPTY_BUCKET,
+        [16] = EMPTY_BUCKET,
+        [17] = EMPTY_BUCKET,
+        [18] = EMPTY_BUCKET,
+        [19] = EMPTY_BUCKET,
+        [20] = {
+            .hash = 617,
+            .key = 617,
+            .value = {
+                .size = 4,
+                .contentCount = 1,
+                .contents = (EdgeReference[1]) {
+                    [0] = {
+                        .backwards = false, // forward
+                        .side = 0, // Top
+                        .tile = NULL
+                    }
+                }
+            },
+        },
+        [21] = EMPTY_BUCKET,
+        [22] = {
+            .hash = 613,
+            .key = 613,
+            .value = {
+                .size = 4,
+                .contentCount = 1,
+                .contents = (EdgeReference[1]) {
+                    [0] = {
+                        .backwards = false, // forward
+                        .side = 2, // Bottom
+                        .tile = NULL
+                    }
+                }
+            },
+        },
+        [23] = {
+            .hash = 863,
+            .key = 863,
+            .value = {
+                .size = 4,
+                .contentCount = 1,
+                .contents = (EdgeReference[1]) {
+                    [0] = {
+                        .backwards = false, // forward
+                        .side = 3, // Left
+                        .tile = NULL
+                    }
+                }
+            },
+        },
+        [24] = {
+            .hash = 1003,
+            .key = 1003,
+            .value = {
+                .size = 4,
+                .contentCount = 1,
+                .contents = (EdgeReference[1]) {
+                    [0] = {
+                        .backwards = false, // forward
+                        .side = 3, // Left
+                        .tile = NULL
+                    }
+                }
+            },
+        },
+        [25] = EMPTY_BUCKET,
+        [26] = EMPTY_BUCKET,
+        [27] = EMPTY_BUCKET,
+        [28] = {
+            .hash = 601,
+            .key = 601,
+            .value = {
+                .size = 4,
+                .contentCount = 1,
+                .contents = (EdgeReference[1]) {
+                    [0] = {
+                        .backwards = false, // forward
+                        .side = 0, // Top
+                        .tile = NULL
+                    }
+                }
+            },
+        },
+        [29] = {
+            .hash = 707,
+            .key = 707,
+            .value = {
+                .size = 4,
+                .contentCount = 1,
+                .contents = (EdgeReference[1]) {
+                    [0] = {
+                        .backwards = false, // forward
+                        .side = 1, // Right
+                        .tile = NULL
+                    }
+                }
+            },
+        },
+        [30] = EMPTY_BUCKET,
+        [31] = {
+            .hash = 665,
+            .key = 665,
+            .value = {
+                .size = 4,
+                .contentCount = 1,
+                .contents = (EdgeReference[1]) {
+                    [0] = {
+                        .backwards = false, // forward
+                        .side = 2, // Bottom
+                        .tile = NULL
+                    }
+                }
+            },
+        },
+    }
+};
+#undef EMPTY_BUCKET
 
 static fu8 min(fu8 a, usize b) {
     if (b < a) {
@@ -140,12 +325,7 @@ static bool testRowParsing() {
     return true;
 }
 static void initializedEdgeParsingTestEdge() {
-    *((Edge*) &edgeParsingTestEdge) = (Edge) {
-        .forwardString = (char*) "#..#.##..#",
-        .backwardString = (char*) "#..##.#..#",
-        .forward = 0x259,
-        .backward = 0x269
-    };
+    edgeParsingTestEdge = correctTile.sides[Top];
 }
 static bool testEdgeParsing() {
     Edge parsed = edgeParsingTestEdge;
@@ -155,36 +335,7 @@ static bool testEdgeParsing() {
 }
 
 static void initializeCorrectTile() {
-    *((Tile*) &correctTile) = (Tile) {
-        .tileID = 1024,
-        .unrotatedTile = (char*)(tileString + 11),
-        .sides = {
-            [Top] = { /* same as edge parsing test edge*/
-                .forwardString = "#..#.##..#",
-                .backwardString = "#..##.#..#",
-                .forward = 0x259,
-                .backward = 0x269
-            },
-            [Right] = {
-                .forwardString = "#.##....##",
-                .backwardString = "##....##.#",
-                .forward = 0x2c3,
-                .backward = 0x30d
-            },
-            [Bottom] = {
-                .forwardString = "#.#..##..#",
-                .backwardString = "#..##..#.#",
-                .forward = 0x299,
-                .backward = 0x265
-            },
-            [Left] = {
-                .forwardString = "#####.#.##",
-                .backwardString = "##.#.#####",
-                .forward = 0x3eb,
-                .backward = 0x35f
-            }
-        }
-    };
+    correctTile.unrotatedTile = (char*)(tileString + 11);
 }
 
 static bool testTileParsing() {
@@ -522,7 +673,7 @@ static bool testTileDebugPrinting(){
     char const correctPrintedTile[] =
         "(Tile) {\n"
         "    .tileID = (fu16) 1024,\n"
-        "    .unrotatedTile = (char*)\n"
+        "    .unrotatedTile = (char const*)\n"
         "        \"#..#.##..#\\n\"\n"
         "        \"#.#..#.##.\\n\"\n"
         "        \"#..##..#.#\\n\"\n"
@@ -535,26 +686,26 @@ static bool testTileDebugPrinting(){
         "        \"#.#..##..#\",\n"
         "    .sides = (Edge[4]) {\n"
         "        [Top] = (Edge) {\n"
-        "            .forwardString = (char*) \"#..#.##..#\",\n"
-        "            .backwardString = (char*) \"#..##.#..#\",\n"
+        "            .forwardString = (char const*) \"#..#.##..#\",\n"
+        "            .backwardString = (char const*) \"#..##.#..#\",\n"
         "            .forward = (fu16) 0x259,\n"
         "            .backward = (fu16) 0x269\n"
         "        },\n"
         "        [Right] = (Edge) {\n"
-        "            .forwardString = (char*) \"#.##....##\",\n"
-        "            .backwardString = (char*) \"##....##.#\",\n"
+        "            .forwardString = (char const*) \"#.##....##\",\n"
+        "            .backwardString = (char const*) \"##....##.#\",\n"
         "            .forward = (fu16) 0x2c3,\n"
         "            .backward = (fu16) 0x30d\n"
         "        },\n"
         "        [Bottom] = (Edge) {\n"
-        "            .forwardString = (char*) \"#.#..##..#\",\n"
-        "            .backwardString = (char*) \"#..##..#.#\",\n"
+        "            .forwardString = (char const*) \"#.#..##..#\",\n"
+        "            .backwardString = (char const*) \"#..##..#.#\",\n"
         "            .forward = (fu16) 0x299,\n"
         "            .backward = (fu16) 0x265\n"
         "        },\n"
         "        [Left] = (Edge) {\n"
-        "            .forwardString = (char*) \"#####.#.##\",\n"
-        "            .backwardString = (char*) \"##.#.#####\",\n"
+        "            .forwardString = (char const*) \"#####.#.##\",\n"
+        "            .backwardString = (char const*) \"##.#.#####\",\n"
         "            .forward = (fu16) 0x3eb,\n"
         "            .backward = (fu16) 0x35f\n"
         "        }\n"
@@ -584,185 +735,23 @@ static bool testVectorDebugPrinting(){
     return false;
 }
 
-/*
- * Found using pypy3:
- * >>>> def spread_bits(num):
- * ....     twoPower = 4
- * ....     num ^= num >> (64 - twoPower)
- * ....     num = ((11400714819323198485 * num) & 0xffff_ffff_ffff_ffff) >> (64 - twoPower)
- * ....     if num == 0:
- * ....         num += 1
- * ....     return num
- * ....
- * >>>> [spread_bits(n) for n in [0x259, 0x269, 0x2c3, 0x30d, 0x299, 0x265, 0x3eb, 0x35f]]
- * [7, 5, 15, 10, 15, 13, 14, 5]
- */
 static void initializeCorrectEdgeMap() {
-    fu16ToEdgeReferenceVectorHashBucket emptyBucket = (fu16ToEdgeReferenceVectorHashBucket) {
-        .hash = SIZE_MAX,
-        .key = 0,
-        .value = (EdgeReferenceVector) {
-            .size = 0,
-            .contentCount = 0,
-            .contents = NULL
+    usize i = correctEdgeMap.size - 1;
+    if (correctEdgeMap.contents == NULL) {
+        fprintf(stderr, "failed to initialize correct edge map");
+        return;
+    }
+    do {
+        fu16ToEdgeReferenceVectorHashBucket* bucket = &(correctEdgeMap.contents[i]);
+        if (bucket -> hash != SIZE_MAX) {
+            EdgeReferenceVector* vector = &(bucket -> value);
+            for (usize j = 0; j < (vector -> contentCount); ++j){
+                EdgeReference* ref = (vector -> contents) + j;
+                ref -> tile = &correctTile;
+            }
         }
-    };
-    *((fu16ToEdgeReferenceVectorOpenHashMap*) &correctEdgeMap) = (fu16ToEdgeReferenceVectorOpenHashMap) {
-        .loadFactor = 0.5,
-        .growFillLevel = 16,
-        .shrinkFillLevel = 0,
-        .contentCount = 8,
-        .size = 32,
-        .bucketMask = 0x1f,
-        .minimumSize = 32,
-        .sizeTwoPower = 6,
-        .contents = (fu16ToEdgeReferenceVectorHashBucket*) (fu16ToEdgeReferenceVectorHashBucket[32]) {
-            [0] = emptyBucket,
-            [1] = emptyBucket,
-            [2] = emptyBucket,
-            [3] = emptyBucket,
-            [4] = emptyBucket,
-            [5] = emptyBucket,
-            [6] = emptyBucket,
-            [7] = emptyBucket,
-            [8] = emptyBucket,
-            [9] = emptyBucket,
-            [10] = emptyBucket,
-            [11] = (fu16ToEdgeReferenceVectorHashBucket) {
-                .hash = 781,
-                .key = 781,
-                .value = (EdgeReferenceVector) {
-                    .size = 1,
-                    .contentCount = 1,
-                    .contents = (EdgeReference*) (EdgeReference[1]) {
-                        [0] = (EdgeReference) {
-                            .backwards = false, // forward
-                            .side = 1, // Right
-                            .tile = (Tile*) &correctTile
-                        }
-                    }
-                },
-            },
-            [12] = emptyBucket,
-            [13] = emptyBucket,
-            [14] = emptyBucket,
-            [15] = emptyBucket,
-            [16] = emptyBucket,
-            [17] = emptyBucket,
-            [18] = emptyBucket,
-            [19] = emptyBucket,
-            [20] = (fu16ToEdgeReferenceVectorHashBucket) {
-                .hash = 617,
-                .key = 617,
-                .value = (EdgeReferenceVector) {
-                    .size = 1,
-                    .contentCount = 1,
-                    .contents = (EdgeReference*) (EdgeReference[1]) {
-                        [0] = (EdgeReference) {
-                            .backwards = false, // forward
-                            .side = 0, // Top
-                            .tile = (Tile*) &correctTile
-                        }
-                    }
-                },
-            },
-            [21] = emptyBucket,
-            [22] = (fu16ToEdgeReferenceVectorHashBucket) {
-                .hash = 613,
-                .key = 613,
-                .value = (EdgeReferenceVector) {
-                    .size = 1,
-                    .contentCount = 1,
-                    .contents = (EdgeReference*) (EdgeReference[1]) {
-                        [0] = (EdgeReference) {
-                            .backwards = false, // forward
-                            .side = 2, // Bottom
-                            .tile = (Tile*) &correctTile
-                        }
-                    }
-                },
-            },
-            [23] = (fu16ToEdgeReferenceVectorHashBucket) {
-                .hash = 863,
-                .key = 863,
-                .value = (EdgeReferenceVector) {
-                    .size = 1,
-                    .contentCount = 1,
-                    .contents = (EdgeReference*) (EdgeReference[1]) {
-                        [0] = (EdgeReference) {
-                            .backwards = false, // forward
-                            .side = 3, // Left
-                            .tile = (Tile*) &correctTile
-                        }
-                    }
-                },
-            },
-            [24] = (fu16ToEdgeReferenceVectorHashBucket) {
-                .hash = 1003,
-                .key = 1003,
-                .value = (EdgeReferenceVector) {
-                    .size = 1,
-                    .contentCount = 1,
-                    .contents = (EdgeReference*) (EdgeReference[1]) {
-                        [0] = (EdgeReference) {
-                            .backwards = false, // forward
-                            .side = 3, // Left
-                            .tile = (Tile*) &correctTile
-                        }
-                    }
-                },
-            },
-            [25] = emptyBucket,
-            [26] = emptyBucket,
-            [27] = emptyBucket,
-            [28] = (fu16ToEdgeReferenceVectorHashBucket) {
-                .hash = 601,
-                .key = 601,
-                .value = (EdgeReferenceVector) {
-                    .size = 1,
-                    .contentCount = 1,
-                    .contents = (EdgeReference*) (EdgeReference[1]) {
-                        [0] = (EdgeReference) {
-                            .backwards = false, // forward
-                            .side = 0, // Top
-                            .tile = (Tile*) &correctTile
-                        }
-                    }
-                },
-            },
-            [29] = (fu16ToEdgeReferenceVectorHashBucket) {
-                .hash = 707,
-                .key = 707,
-                .value = (EdgeReferenceVector) {
-                    .size = 1,
-                    .contentCount = 1,
-                    .contents = (EdgeReference*) (EdgeReference[1]) {
-                        [0] = (EdgeReference) {
-                            .backwards = false, // forward
-                            .side = 1, // Right
-                            .tile = (Tile*) &correctTile
-                        }
-                    }
-                },
-            },
-            [30] = emptyBucket,
-            [31] = (fu16ToEdgeReferenceVectorHashBucket) {
-                .hash = 665,
-                .key = 665,
-                .value = (EdgeReferenceVector) {
-                    .size = 1,
-                    .contentCount = 1,
-                    .contents = (EdgeReference*) (EdgeReference[1]) {
-                        [0] = (EdgeReference) {
-                            .backwards = false, // forward
-                            .side = 2, // Bottom
-                            .tile = (Tile*) &correctTile
-                        }
-                    }
-                },
-            },
-        }
-    };
+    } while (i-- >= 1);
+
 }
 #undef EMPTY_BUCKET
 
@@ -807,11 +796,6 @@ static bool testEdgeMapBuilding() {
         success = false;
     }
 
-    if (edges.contentCount != correctEdgeMap.contentCount) {
-        fprintf(stderr, "mismatched content count %lu, expected content count %lu\n", edges.contentCount, correctEdgeMap.contentCount);
-        success = false;
-    }
-
     if (edges.bucketMask != correctEdgeMap.bucketMask) {
         fprintf(stderr, "mismatched bucket mask %lu, expected bucket mask %lu\n", edges.bucketMask, correctEdgeMap.bucketMask);
         success = false;
@@ -830,9 +814,9 @@ static bool testEdgeMapBuilding() {
     unsigned char bucketLimit;
     if (edges.size != correctEdgeMap.size) {
         fprintf(stderr, "mismatched map size %lu, expected map size %lu\n", edges.size, correctEdgeMap.size);
-        bucketLimit = min(16, edges.size);
+        bucketLimit = min(correctEdgeMap.size, edges.size);
     } else {
-        bucketLimit = 16;
+        bucketLimit = correctEdgeMap.size;
     }
 
     if (edges.contents == NULL || correctEdgeMap.contents == NULL) {
@@ -846,14 +830,13 @@ static bool testEdgeMapBuilding() {
             if (correctMapBucket -> hash != edgeMapBucket -> hash) {
                 fprintf(stderr, "mismatched hashes at index %hhu in edge maps: found %lu, expected %lu\n", i, edgeMapBucket -> hash, correctMapBucket -> hash);
                 success = false;
-                if (edgeMapBucket -> hash == SIZE_MAX) {
-                    fprintf(stderr, "edge map bucket hash was 0; skipping these buckets\n");
-                    ++correctMapBucket;
-                    ++edgeMapBucket;
-                    continue;
-                }
             }
-
+            if (edgeMapBucket -> hash == SIZE_MAX) {
+                fprintf(stderr, "edge map bucket hash was SIZE_MAX; skipping bucket %zu\n", i);
+                ++correctMapBucket;
+                ++edgeMapBucket;
+                continue;
+            }
             if (correctMapBucket -> key != edgeMapBucket -> key) {
                 fprintf(stderr, "mismatched keys at index %hhu in edge maps: found %lu, expected %lu\n", i, edgeMapBucket -> key, correctMapBucket -> key);
                 success = false;
@@ -872,9 +855,9 @@ static bool testEdgeMapBuilding() {
                 if (correctMapVector -> contentCount != edgeMapVector -> contentCount) {
                     fprintf(stderr, "mismatched vector fill size in bucket %hhu in edge maps: found %lu items, expected %lu instead\n", i, edgeMapVector -> contentCount, correctMapVector -> contentCount);
                     success = false;
-                    vectorLimit = min(16, edgeMapVector -> contentCount);
+                    vectorLimit = min(correctEdgeMap.size, edgeMapVector -> size);
                 } else {
-                    vectorLimit = 16;
+                    vectorLimit = correctEdgeMap.size;
                 }
 
                 if (correctMapVector -> contents == NULL || edgeMapVector -> contents == NULL) {
@@ -889,7 +872,8 @@ static bool testEdgeMapBuilding() {
                     EdgeReference* correctMVContents = correctMapVector -> contents;
                     EdgeReference* edgeMVContents = edgeMapVector -> contents;
 
-                    for (unsigned char j = 0; j < vectorLimit; ++j) {
+                    for (unsigned char j = 0; j < vectorLimit; ++j, ++correctMVContents, ++edgeMVContents) {
+
                         if (correctMVContents -> backwards != edgeMVContents -> backwards) {
                             fprintf(stderr, "mismatched reversal of vector element %hhu in bucket %hhu in edge maps: backwards was %s, but was supposed to be %s\n", j, i, FORBACKWARD_STRINGS[edgeMVContents -> backwards], FORBACKWARD_STRINGS[correctMVContents -> backwards]);
                             success = false;
@@ -904,9 +888,6 @@ static bool testEdgeMapBuilding() {
                             fprintf(stderr, "mismatched tile pointers of vector element %hhu in bucket %hhu in edge maps: expected correctTile at %p but got %p\n", j, i, (void*) &(correctMVContents -> tile), (void*) (edgeMVContents -> tile));
                             success = false;
                         }
-
-                        ++correctMVContents;
-                        ++edgeMVContents;
                     }
                 }
             }

@@ -1,6 +1,7 @@
 
 use std::borrow::Borrow;
 use std::collections::HashSet;
+
 mod tile_structures;
 use tile_structures::*;
 mod lib_square;
@@ -9,11 +10,11 @@ use lib_square::*;
 fn gather_errors<T>(accum: Result<Vec<T>, String>, item: Result<T, String>) -> Result<Vec<T>, String> {
     match (item, accum) {
         (Ok(itm), Ok(mut vec)) => {vec.push(itm); Ok(vec)},
-        (Ok(_), Err(_errs)) => Err(_errs),
+        (Ok(_), Err(errs)) => Err(errs),
         (Err(err), Ok(_)) => Err(err),
         (Err(err), Err(mut errs)) => {
             errs.push('\n');
-            errs += &err;
+            errs.push_str(&err);
             Err(errs)
         }
     }
@@ -26,18 +27,6 @@ pub struct ReturnAssembler<S: Borrow<str>, R>{
 impl<S: Borrow<str>, R> ReturnAssembler<S, R> {
     pub fn new(fun: fn(usize, &[TilePlacement<S>]) -> R) -> ReturnAssembler<S, R> {
         ReturnAssembler{fun}
-    }
-}
-
-impl<S: Borrow<str>> Default for ReturnAssembler<S, u64> {
-    fn default() -> Self {
-        Self::new(get_corner_product)
-    }
-}
-
-impl<'a, S: 'a +  Borrow<str>, R> Borrow<fn(usize, &[TilePlacement<S>]) -> R> for ReturnAssembler<S, R> {
-    fn borrow(&self) -> &fn(usize, &[TilePlacement<S>]) -> R {
-        &self.fun
     }
 }
 
@@ -55,7 +44,26 @@ fn get_corner_product<S: Borrow<str>>(map_edge_length: usize, placements: &[Tile
     result
 }
 
-pub fn find_corner_id_product<S: Borrow<str> + Clone + Default + From<String> + std::fmt::Debug, R>(tiles_string: &'static str, return_assembler: ReturnAssembler<S, R>) -> Result<R, String> {
+impl<S: Borrow<str>> Default for ReturnAssembler<S, u64> {
+    fn default() -> Self {
+        Self::new(get_corner_product)
+    }
+}
+
+impl<'a, S: 'a +  Borrow<str>, R> Borrow<fn(usize, &[TilePlacement<S>]) -> R> for ReturnAssembler<S, R> {
+    fn borrow(&self) -> &fn(usize, &[TilePlacement<S>]) -> R {
+        &self.fun
+    }
+}
+
+
+
+use std::fmt;
+pub fn find_corner_id_product<S, R>(
+    tiles_string: &'static str,
+    return_assembler: ReturnAssembler<S, R>
+  ) -> Result<R, String>
+  where S: Borrow<str> + Clone + Default + From<String> + fmt::Debug {
     let tile_count = tiles_string.split("\n\n").count();
     println!("tile count: {}", tile_count);
     // collect tile strings
@@ -144,9 +152,12 @@ fn piece_together_map<'a, S: Borrow<str> + Clone, R>
 /// and the currently single placed tile data and tries to find
 /// a solution to edge matching by backtracking 
 /// 
-fn backtrack_stitching<'a, 'b, S: Borrow<str> + Clone>(tile_count: usize, map_side_length: usize, edge_map: &'a EdgeMap<'a, 'a, S>,
-                      placements: &'b mut Vec<TilePlacement<'a, 'a, S>>, placed_tile_ids: &'b mut HashSet<EdgeBits>,
-                      edge_reference_slices: &'b mut Vec<&'a [EdgeReference<'a, 'a, S>]>) -> bool {
+fn backtrack_stitching<'a, 'b, S>(
+    tile_count: usize, map_side_length: usize, edge_map: &'a EdgeMap<'a, 'a, S>,
+    placements: &'b mut Vec<TilePlacement<'a, 'a, S>>, placed_tile_ids: &'b mut HashSet<EdgeBits>,
+    edge_reference_slices: &'b mut Vec<&'a [EdgeReference<'a, 'a, S>]>
+  ) -> bool
+  where S: Borrow<str> + Clone {
     loop {
         println!("stack depth: {}", placements.len());
         // this block truncates the edge reference slices stack
@@ -174,20 +185,9 @@ fn backtrack_stitching<'a, 'b, S: Borrow<str> + Clone>(tile_count: usize, map_si
         let left_bits: Option<EdgePlacement> = left_placement.map(|left| {left.get_edge_placement(Side::Right)});
         let up_bits: Option<EdgePlacement> = up_placement.map(|up| {up.get_edge_placement(Side::Bottom)});
         
-        
-        // this block... kills the currently active slice?
-        // that's not right...
-        // it should take it and use it instead of immediately killing it
-        // FIXME
-        // TODO
         let (source_slice, filter_left) = if edge_reference_slice_count == placed_tile_count + 1 {
-            (match edge_reference_slices.pop() {
-                Some(last_edge_reference_slice) => last_edge_reference_slice,
-                None => {
-                    eprint!("Tried to pop from empty edge slice vec, shouldn't happen");
-                    return false;
-                }
-            }, up_bits.is_some() && left_bits.is_some())
+            (edge_reference_slices.pop().expect("Tried to pop from empty edge slice vec, shouldn't happen")
+            , up_bits.is_some() && left_bits.is_some())
         } else {
             // This block fetches the  vector of single-edge matching tile placements
             match (up_bits, left_bits) {
@@ -258,5 +258,4 @@ fn backtrack_stitching<'a, 'b, S: Borrow<str> + Clone>(tile_count: usize, map_si
 }
 
 #[cfg(test)]
-#[path="./test_map_stitching.rs"]
 mod test_map_stitching;

@@ -57,12 +57,11 @@ _Bool hashMapMethod(construct3) (HashMap* map, double loadFactor, usize required
             fprintf(stderr, "unable to allocate %zu buckets, or %zu bytes\n", minSize, minSize * sizeof(Bucket));
             return false;
         }
-    } else {
-        // initialize contents;
-        for (fu8 i = 0; i < minSize; ++i) {
-            Bucket* bucket = &(contents[i]);
-            bucket -> hash = SIZE_MAX;
-        }
+    }
+    // initialize contents;
+    for (fu8 i = 0; i < minSize; ++i) {
+        Bucket* bucket = &(contents[i]);
+        bucket -> hash = SIZE_MAX;
     }
     map -> contents = contents;
     map -> contentCount = 0;

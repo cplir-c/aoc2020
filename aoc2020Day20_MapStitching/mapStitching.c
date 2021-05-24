@@ -33,7 +33,7 @@ static fu64 findResult(fu16 mapSideSize, EdgeReferenceVector* placements) {
     return result;
 }
 
-fu64 pieceTogetherMap(TileVector* tiles, fu16ToEdgeReferenceVectorOpenHashMap* edges) {
+static fu64 pieceTogetherMap(TileVector* tiles, fu16ToEdgeReferenceVectorOpenHashMap* edges) {
     fu16 tileCount = tiles -> contentCount;
     fu16 mapSideSize = intSqrt(tileCount);
     EdgeReferenceVector placements;

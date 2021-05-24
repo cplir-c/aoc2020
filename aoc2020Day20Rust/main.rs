@@ -1,7 +1,6 @@
 
 use std::default::Default;
 
-#[path="./map_stitching/map_stitching.rs"]
 mod map_stitching;
 
 fn main() {

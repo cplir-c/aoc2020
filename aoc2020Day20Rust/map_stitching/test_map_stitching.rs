@@ -1,6 +1,7 @@
 
 use super::TileOrientation;
 use std::default::Default;
+use std::fmt::Write;
 
 #[test]
 fn example_test_correct_answer() {
@@ -20,10 +21,10 @@ fn example_test_good_assembly() {
             let tile_body_length = tiles.get(0)
                 .expect("failed to find a tile to peek at")
                 .tile.body_string.len();
-            let out = String::with_capacity(
+            let mut out = String::with_capacity(
                 map_width * map_width * tile_body_length
             );
-            write!(out, "{}", MapDisplay(tiles))
+            write!(&mut out, "{}", MapDisplay(tiles))
                 .expect("failed to allocate string");
             out
         }
@@ -31,7 +32,7 @@ fn example_test_good_assembly() {
     let example_result = super::find_corner_id_product(EXAMPLE_TILES_STRING_INPUT, return_assembler)
         .expect("failed example assembly-display test");
     
-    let out = String::with_capacity(example_result.len());
+    let mut out = String::with_capacity(example_result.len());
     for orientation in TileOrientation::default() {
         out.clear();
         orientation.format(&mut out, EXAMPLE_MAP_ARRANGEMENT)
