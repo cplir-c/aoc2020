@@ -6,6 +6,8 @@ mod tile_structures;
 use tile_structures::*;
 mod lib_square;
 use lib_square::*;
+mod map_structures;
+use map_structures::*;
 
 fn gather_errors<T>(accum: Result<Vec<T>, String>, item: Result<T, String>) -> Result<Vec<T>, String> {
     match (item, accum) {
@@ -150,7 +152,7 @@ fn piece_together_map<'a, S: Borrow<str> + Clone, R>
 /// ------------------
 /// This function takes the precalculated tile data
 /// and the currently single placed tile data and tries to find
-/// a solution to edge matching by backtracking 
+/// a solution to edge matching by backtracking
 /// 
 fn backtrack_stitching<'a, 'b, S>(
     tile_count: usize, map_side_length: usize, edge_map: &'a EdgeMap<'a, 'a, S>,
