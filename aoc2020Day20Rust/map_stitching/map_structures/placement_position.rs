@@ -3,15 +3,23 @@ use std::iter::FusedIterator;
 
 use super::super::lib_square;
 
-#[derive(Copy, Clone, Default, Eq, PartialEq)]
+/// represents a 2d array index
+#[derive(Copy, Clone, Default, Eq, PartialEq, Debug)]
 pub struct PlacementPosition {
     row: u16,
     col: u16
 }
 
-impl From<usize> for PlacementPosition {
-    fn from(index: usize) -> Self {
-        // save as divmod(index, 2)
+impl PlacementPosition {
+    fn pairing(self) -> u32 {
+        let x = self.col;
+        let y = self.row;
+        let m: u32 = x.max(y).into();
+        let d: u32 = if m & 1 != 0 {x - y} else {y - x}.into();
+        m * (m + 1) + d
+    }
+    fn from_paired(index: u32) -> Self {
+        // same as divmod(index, 2)
         let mut x = lib_square::isqrt(index);
         let mut y = index - x * x;
         let m = x;
@@ -33,20 +41,25 @@ impl From<usize> for PlacementPosition {
             }
         }
     }
-}
-
-impl PlacementPosition {
-    pub fn flat_position(self, width: u16) -> usize {
-        let width = width as usize;
-        let row_pos = self.row as usize * width;
-        self.col as usize + row_pos
+    pub fn flat_position(self, width: u16) -> u32 {
+        let width = width as u32;
+        let row_pos = self.row as u32 * width;
+        self.col as u32 + row_pos
     }
-    fn pairing(self) -> usize {
-        let x = self.col;
-        let y = self.row;
-        let m: usize = x.max(y).into();
-        let d: usize = if m & 1 != 0 {x - y} else {y - x}.into();
-        m * (m + 1) + d
+    fn from_flat(index: u32, side_length: u16) -> Self {
+        PlacementPosition {
+            row: (index as u32 / side_length as u32) as u16,
+            col: (index as u32 % side_length as u32) as u16
+        }
+    }
+    fn to_packed(self) -> u32 {
+        self.row as u32 | (self.col as u32 >> 16)
+    }
+    fn from_packed(pack: u32) -> Self {
+        PlacementPosition {
+            row: (pack & 0xff_ff) as u16,
+            col: (pack >> 16) as u16
+        }
     }
     pub fn up(self) -> Option<Self> {
         if self.row > 0 {
@@ -108,47 +121,54 @@ impl ExactSizeIterator for PlacementPositionIterator {
         let total_size = (self.side_length as usize).pow(2);
         match self.previous {
             None => total_size,
-            Some(pos) => total_size - pos.pairing()
+            Some(pos) => total_size - pos.pairing() as usize
         }
     }
 }
+
+const REV_LEFT: Mode = Mode::Right;
+const REV_RIGHT: Mode = Mode::Left;
+const REV_UP: Mode = Mode::Down;
+const REV_DOWN: Mode = Mode::Up;
+
 impl DoubleEndedIterator for PlacementPositionIterator {
     fn next_back(&mut self) -> Option<<Self as Iterator>::Item> {
-        self.previous = self.previous.and_then(|pos|{
+        let old: Option<PlacementPosition> = self.previous;
+        self.previous = old.and_then(|pos|{
             let (x, y, mode) = (pos.col, pos.row, self.mode);
             
             let new_state = {
                 if x == 0 && y == 0 {
-                    self.mode = Mode::Left;
+                    self.mode = Mode::Left; // ready to go forwards again
                     self.previous = None;
-                    return None
-                } else if x == 0 && mode == Mode::Left {
-                    (x, y - 1, Mode::Right)
-                } else if y == 0 && mode == Mode::Up {
-                    (x - 1, y, Mode::Down)
+                    return None;
+                } else if x == 0 && mode == REV_LEFT {
+                    (x, y - 1, REV_RIGHT)
+                } else if y == 0 && mode == REV_UP {
+                    (x - 1, y, REV_DOWN)
                 } else if x == y {
-                    if mode == Mode::Right {
-                        (x, y + 1, Mode::Up)
-                    } else {
-                        (x + 1, y, Mode::Left)
+                    if mode == REV_RIGHT {
+                        (x, y - 1, REV_UP)
+                    } else { // going REV_DOWN
+                        (x - 1, y, REV_LEFT)
                     }
                 } else {
                     match mode {
-                        Mode::Left => (x + 1, y, mode),
-                        Mode::Right => (x - 1, y, mode),
-                        Mode::Up => (x, y + 1, mode),
-                        Mode::Down => (x, y - 1, mode)
+                        REV_LEFT => (x - 1, y, mode),
+                        REV_RIGHT => (x + 1, y, mode),
+                        REV_UP => (x, y - 1, mode),
+                        REV_DOWN => (x, y + 1, mode)
                     }
                 }
             };
             
             self.mode = new_state.2;
-            Some(PlacementPosition{
+            Some(PlacementPosition {
                 row: new_state.1,
                 col: new_state.0
             })
         });
-        self.previous
+        old
     }
 }
 impl Iterator for PlacementPositionIterator {
@@ -178,7 +198,7 @@ impl Iterator for PlacementPositionIterator {
                         }
                     }
                 };
-                if new_state.0 > self.side_length || new_state.1 > self.side_length {
+                if new_state.0 >= self.side_length || new_state.1 >= self.side_length {
                     return None;
                 }
                 
@@ -192,3 +212,8 @@ impl Iterator for PlacementPositionIterator {
         self.previous
     }
 }
+
+#[cfg(test)]
+#[path="test_placement_position.rs"]
+mod test_placement_position;
+

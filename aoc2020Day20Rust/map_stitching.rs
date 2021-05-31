@@ -22,6 +22,7 @@ fn gather_errors<T>(accum: Result<Vec<T>, String>, item: Result<T, String>) -> R
     }
 }
 
+#[repr(transparent)]
 pub struct ReturnAssembler<S: Borrow<str>, R>{
     fun: fn(usize, &[TilePlacement<S>]) -> R
 }
@@ -58,8 +59,6 @@ impl<'a, S: 'a +  Borrow<str>, R> Borrow<fn(usize, &[TilePlacement<S>]) -> R> fo
     }
 }
 
-
-
 use std::fmt;
 pub fn find_corner_id_product<S, R>(
     tiles_string: &'static str,
@@ -83,14 +82,6 @@ pub fn find_corner_id_product<S, R>(
         Ok(tiles) => tiles,
         Err(errs) => { return Err(format!("Errors while parsing tiles:\n{}", errs)); }
     };
-    if tiles[0].into_iter().take(10).count() != 8 {
-        println!("{}", TileOrientationIterator::default()
-                .take(10)
-                .map(|orientation|{
-                    format!("{:#?},\n", orientation)
-                }).collect::<String>());
-        return Err("broken tile placement iterator".to_string());
-    }
     let all_placements: Vec<TilePlacement<S>> = tiles.iter().flat_map(|tile|{tile.into_iter()}).collect();
     if all_placements.is_empty() {
         return Err("Error: empty All Placements vector".to_string())
@@ -128,21 +119,22 @@ fn piece_together_map<'a, S: Borrow<str> + Clone, R>
     edge_reference_slices.push(&[]);
     for tile in tiles {
         placed_tile_ids.insert(tile.tile_id);
-        for placement in tile {
-            placements.push(placement);
-            
-            let success: bool = backtrack_stitching(tile_count, edge_length, edge_map,
-                &mut placements, &mut placed_tile_ids, &mut edge_reference_slices);
-            if success {
-                return Some(
-                    Borrow::<fn(usize, &[TilePlacement<S>]) -> R>::borrow(
-                        &return_assembler
-                    )(edge_length, placements.as_slice())
-                );
-            }
-            
-            placements.pop();
+        // WLOG only consider the first orientation for each tile
+        // rotating the root tile is equivalent to rotating the entire board
+        let placement = tile.into_iter().next().unwrap();
+        placements.push(placement);
+        
+        let success: bool = backtrack_stitching(tile_count, edge_length, edge_map,
+            &mut placements, &mut placed_tile_ids, &mut edge_reference_slices);
+        if success {
+            return Some(
+                Borrow::<fn(usize, &[TilePlacement<S>]) -> R>::borrow(
+                    &return_assembler
+                )(edge_length, placements.as_slice())
+            );
         }
+        
+        placements.pop();
         placed_tile_ids.remove(&tile.tile_id);
     }
     None
@@ -155,8 +147,8 @@ fn piece_together_map<'a, S: Borrow<str> + Clone, R>
 /// a solution to edge matching by backtracking
 /// 
 fn backtrack_stitching<'a, 'b, S>(
-    tile_count: usize, map_side_length: usize, edge_map: &'a EdgeMap<'a, 'a, S>,
-    placements: &'b mut Vec<TilePlacement<'a, 'a, S>>, placed_tile_ids: &'b mut HashSet<EdgeBits>,
+    placements: PlacementMap<'b, TilePlacement<'a, 'b, S>>,
+    placed_tile_ids: &'b mut HashSet<u16>,
     edge_reference_slices: &'b mut Vec<&'a [EdgeReference<'a, 'a, S>]>
   ) -> bool
   where S: Borrow<str> + Clone {
@@ -171,21 +163,15 @@ fn backtrack_stitching<'a, 'b, S>(
             edge_reference_slice_count = edge_reference_slices.len();
         }
         
-        // This block fetches the adjancent tile edges
-        let left_placement: Option<&TilePlacement<S>>;
-        let up_placement: Option<&TilePlacement<S>>;
-        if placed_tile_count < map_side_length {
-            left_placement = placements.last();
-            up_placement = None;
-        } else if placed_tile_count % map_side_length == 0 {
-            left_placement = None;
-            up_placement = placements.get(placed_tile_count - map_side_length);
-        } else {
-            left_placement = placements.last();
-            up_placement = placements.get(placed_tile_count - map_side_length);
+        let pos = match placements.next() {
+            None => { return true; },
+            Some(pos) => pos
         };
-        let left_bits: Option<EdgePlacement> = left_placement.map(|left| {left.get_edge_placement(Side::Right)});
-        let up_bits: Option<EdgePlacement> = up_placement.map(|up| {up.get_edge_placement(Side::Bottom)});
+        
+        // This block fetches the adjancent tile edges
+        let adjacents = placements.get_adjacents(pos);
+        let left_bits: Option<EdgePlacement> = adjacents.left().map(|left| {left.get_edge_placement(Side::Right)});
+        let up_bits: Option<EdgePlacement> = adjacents.up().map(|up| {up.get_edge_placement(Side::Bottom)});
         
         let (source_slice, filter_left) = if edge_reference_slice_count == placed_tile_count + 1 {
             (edge_reference_slices.pop().expect("Tried to pop from empty edge slice vec, shouldn't happen")

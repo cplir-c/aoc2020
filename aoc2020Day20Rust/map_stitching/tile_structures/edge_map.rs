@@ -22,14 +22,21 @@ pub fn build_edge_map<'a, S: Borrow<str> + Clone>(placements: &'a[TilePlacement<
 
 #[cfg(test)]
 mod tests {
+    use std::fmt;
     use std::fmt::Display;
     use std::fmt::Formatter;
-    use std::fmt;
     use std::io;
     use std::io::Write;
+    use std::mem;
+    use std::mem::MaybeUninit;
     use std::str;
+    
+    use super::super::tile_placement::TilePlacement;
     use super::super::edge_placement::EdgePlacement;
     use super::super::tile::Tile;
+    use super::super::tile_orientation::TileOrientationIterator;
+    
+    use super::{EdgeMap, build_edge_map};
     
     struct TileRowDisplay(u16);
     impl Display for TileRowDisplay {
@@ -85,14 +92,32 @@ mod tests {
             // write the tile row with a fill char of '.', and
             // a min precision and max width of tile_edge_length
             write!(out, "{}", left)?;
-            write!(out, "{:.>edge_length$.edge_length$}", TileRowDisplay(row_function(row)), edge_length=(tile_edge_length - 2) as usize)?;
+            write!(out, "{:.>edge_length$.edge_length$}", TileRowDisplay(row_function(row)),
+                edge_length=(tile_edge_length - 2) as usize)?;
             writeln!(out, "{}", right)
         })
     }
     
-    use std::mem::MaybeUninit;
-    use super::{EdgeMap, build_edge_map};
-    use super::super::tile_placement::TilePlacement;
+    #[test]
+    fn test_tile_orientations() {
+        let mut tile_buf = Vec::<u8>::new();
+        const TILE_EDGE_SIZE: u16 = 10;
+        write_test_tile(&mut tile_buf, TILE_EDGE_SIZE, 1024, |row|{
+            24 * TILE_EDGE_SIZE + row
+        }).expect("failed to write test tile");
+        let tile_str = str::from_utf8(&tile_buf).expect("failed to print valid utf8 tile");
+        let tile: Tile<Box<str>> = Tile::parse(tile_str).expect("failed to parse generated tile");
+        
+        if tile.into_iter().take(10).count() != 8 {
+            eprintln!("{}", TileOrientationIterator::default()
+                    .take(10)
+                    .map(|orientation|{
+                        format!("{:#?},\n", orientation)
+                    }).collect::<String>());
+            panic!("broken tile placement iterator");
+        }
+    }
+    
     
     #[test]
     fn test_self_lookup() {
@@ -115,11 +140,10 @@ mod tests {
             
             let buf_left = buf_ref.len();
             let good_buf = &tiles_buf.as_ref()[..tiles_buf.len() - buf_left];
-            std::str::from_utf8(good_buf)
+            str::from_utf8(good_buf)
                 .expect("failed to stringify tiles string buffer")
         };
         // https://doc.rust-lang.org/nightly/std/mem/union.MaybeUninit.html#initializing-an-array-element-by-element
-        println!("{}", tiles_string);
         let tiles: [Tile<Box<str>>; TILE_COUNT] = {
             let mut tiles: [MaybeUninit<Tile<Box<str>>>; TILE_COUNT] = unsafe {
                 MaybeUninit::uninit().assume_init()
@@ -128,7 +152,7 @@ mod tests {
                 *tile = MaybeUninit::new(Tile::parse(tile_str).expect("failed to parse test tile"));
             }
             unsafe {
-                std::mem::transmute::<_, [Tile<Box<str>>; TILE_COUNT]>(tiles)
+                mem::transmute::<_, [Tile<Box<str>>; TILE_COUNT]>(tiles)
             }
         };
         
@@ -142,7 +166,7 @@ mod tests {
                 }
             }
             unsafe {
-                std::mem::transmute::<_, [TilePlacement<_>; TILE_COUNT * 8]>(placements)
+                mem::transmute::<_, [TilePlacement<_>; TILE_COUNT * 8]>(placements)
             }
         };
         

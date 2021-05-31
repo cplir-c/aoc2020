@@ -1,26 +1,38 @@
+use std::cmp::Ord;
 use std::cmp::Ordering;
+use std::cmp::PartialOrd;
 use std::fmt;
 use std::fmt::Write;
 use std::iter::repeat;
+use std::ops::Add;
 use std::ops::Deref;
+use std::ops::Mul;
+use std::ops::Shr;
+use std::ops::Sub;
 use unicode_segmentation::UnicodeSegmentation;
 
-pub fn invert_uint_function<F: Fn(usize) -> usize>(target: usize, f: F) -> usize {
-    let mut upper = target >> 1;
-    let mut lower = 0;
-    while upper - lower > 1 {
-        let middle_bound = (upper + lower) >> 1;
+pub fn invert_uint_function<U, F>(target: U, f: F) -> U
+  where U: Sub<Output=U> + Add<Output=U> + Shr<Output=U>
+           + From<u8> + Ord
+  , F: Fn(U) -> U {
+    let one = U::from(1);
+    let mut upper = target >> one;
+    let mut lower = U::from(0);
+    while upper - lower > one {
+        let middle_bound = (upper + lower) >> one;
         let middle_attempt = f(middle_bound);
-        match std::cmp::Ord::cmp(&middle_attempt, &target) {
+        match Ord::cmp(&middle_attempt, &target) {
             Ordering::Less => { lower = middle_bound; },
             Ordering::Equal => { return middle_bound; },
             Ordering::Greater => { upper = middle_bound; }
         };
     }
-    (upper + lower) >> 1
+    (upper + lower) >> one
 }
 
-pub fn isqrt(area: usize) -> usize {
+pub fn isqrt<U>(area: U) -> U
+  where U: Mul<Output=U> + Sub<Output=U> + Add<Output=U>
+           + Shr<Output=U> + From<u8> + Ord {
     invert_uint_function(area, |x|{ x * x })
 }
 
