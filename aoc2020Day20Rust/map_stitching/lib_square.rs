@@ -1,6 +1,5 @@
 use std::cmp::Ord;
 use std::cmp::Ordering;
-use std::cmp::PartialOrd;
 use std::fmt;
 use std::fmt::Write;
 use std::iter::repeat;
@@ -13,7 +12,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 pub fn invert_uint_function<U, F>(target: U, f: F) -> U
   where U: Sub<Output=U> + Add<Output=U> + Shr<Output=U>
-           + From<u8> + Ord
+           + From<u8> + Ord + Copy
   , F: Fn(U) -> U {
     let one = U::from(1);
     let mut upper = target >> one;
@@ -32,7 +31,7 @@ pub fn invert_uint_function<U, F>(target: U, f: F) -> U
 
 pub fn isqrt<U>(area: U) -> U
   where U: Mul<Output=U> + Sub<Output=U> + Add<Output=U>
-           + Shr<Output=U> + From<u8> + Ord {
+           + Shr<Output=U> + From<u8> + Ord + Copy {
     invert_uint_function(area, |x|{ x * x })
 }
 

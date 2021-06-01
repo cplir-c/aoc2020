@@ -1,7 +1,5 @@
 
 use super::placement_position::PlacementPosition;
-use super::placement_slot::PlacementSlot;
-use super::placement_slot::MutPlacementSlot;
 
 pub struct AdjacentPlacements<'a, T> {
     up: Option<&'a T>,
@@ -13,22 +11,20 @@ impl<'a, T> AdjacentPlacements<'a, T> {
             up, left
         }
     }
-    pub fn from_slice(slice: &'a mut [MutPlacementSlot<'a, T>], pos: PlacementPosition, side_length: u16) -> Self {
-        let (slice, left): (&[MutPlacementSlot<T>], Option<&T>) = match pos.left(){
+    pub fn from_slice(slice: &'a [Option<&'a T>], pos: PlacementPosition, side_length: u16) -> Self {
+        let (slice, left): (&[Option<&T>], Option<&T>) = match pos.left(){
             Some(poss) => {
                 let flatpos = poss.flat_position(side_length) as usize;
                 let (slice, rest) = slice.split_at(flatpos);
                 (slice, rest.first()
-                    .and_then(|reference| <Option<&T>>::from(
-                        PlacementSlot::from(reference))))
+                    .and_then(|place_ref| *place_ref))
             },
             None => (slice, None)
         };
         let up: Option<&T> = pos.up().and_then(|poss|{
             let flatpos = poss.flat_position(side_length) as usize;
             slice.get(flatpos)
-                .and_then(|reference| <Option<&T>>::from(
-                    PlacementSlot::from(reference)))
+                .and_then(|place_ref| *place_ref)
         });
         
         AdjacentPlacements{up, left}

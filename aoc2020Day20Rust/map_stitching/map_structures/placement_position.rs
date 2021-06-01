@@ -1,5 +1,6 @@
 
 use std::iter::FusedIterator;
+use std::cmp::Ordering;
 
 use super::super::lib_square;
 
@@ -77,8 +78,23 @@ impl PlacementPosition {
     }
 }
 
+impl Ord for PlacementPosition {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self == other {
+            return Ordering::Equal;
+        }
+        self.pairing().cmp(&other.pairing())
+    }
+}
+impl PartialOrd for PlacementPosition {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 /// The shell enumeration of N X N where N = {0, 1, 2, ...}
 /// https://oeis.org/A319514
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct PlacementPositionIterator {
     side_length: u16,
     previous: Option<PlacementPosition>,
