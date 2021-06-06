@@ -15,9 +15,17 @@ impl PlacementPosition {
     fn pairing(self) -> u32 {
         let x = self.col;
         let y = self.row;
-        let m: u32 = x.max(y).into();
-        let d: u32 = if m & 1 != 0 {x - y} else {y - x}.into();
-        m * (m + 1) + d
+        let m = x.max(y) as u32;
+        let msq = m * (m + 1);
+        let (x, y) = (x as i32, y as i32);
+        let i = if m & 1 == 0 { // m is even
+            y - x
+        } else {
+            x - y
+        };
+        //println!("u32 msq{}, i32 i{}", msq, i);
+        let i = i + msq as i32;
+        i as u32
     }
     fn from_paired(index: u32) -> Self {
         // same as divmod(index, 2)
@@ -137,7 +145,7 @@ impl ExactSizeIterator for PlacementPositionIterator {
         let total_size = (self.side_length as usize).pow(2);
         match self.previous {
             None => total_size,
-            Some(pos) => total_size - pos.pairing() as usize
+            Some(pos) => total_size - pos.pairing() as usize - 1
         }
     }
 }

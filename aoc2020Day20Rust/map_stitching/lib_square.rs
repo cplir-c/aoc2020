@@ -1,6 +1,8 @@
 use std::cmp::Ord;
 use std::cmp::Ordering;
 use std::fmt;
+use std::fmt::Debug;
+use std::fmt::Display;
 use std::fmt::Write;
 use std::iter::repeat;
 use std::ops::Add;
@@ -96,9 +98,9 @@ impl<'a, W: Write> SquareFormat<'a, W>{
     }
 }
 
+#[repr(transparent)]
 pub struct MapDisplay<'a, T: fmt::Display>(pub &'a [T]);
-
-impl<'a, 'b, T: fmt::Display> fmt::Display for MapDisplay<'a, T> {
+impl<'a, 'b, T: Display + Debug> fmt::Display for MapDisplay<'a, T> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let tile_count = self.0.len();
         writeln!(formatter, "count: {}", tile_count)?;
@@ -107,12 +109,14 @@ impl<'a, 'b, T: fmt::Display> fmt::Display for MapDisplay<'a, T> {
         }
         let edge_length = isqrt(tile_count);
         
-        let mut sizes_vec = vec![0; edge_length * 2];
+        let mut sizes_vec: Vec<usize> = vec![0; edge_length * 2];
         let (heights, widths): (&mut [usize], &mut [usize]) = sizes_vec.as_mut_slice().split_at_mut(edge_length);
         let mut tile_strings: Vec<Box<str>> = Vec::with_capacity(tile_count);
         
+        println!("heights len {}, widths len {}", heights.len(), widths.len());
         let mut size_guess: Option<usize> = None;
         for (row, chunk) in self.0.chunks(edge_length).enumerate() {
+            println!("row {}: {:#?}", row, chunk);
             for (col, tile) in chunk.iter().enumerate() {
                 let mut string_buf: String = match size_guess{
                     Some(len) => String::with_capacity(len),

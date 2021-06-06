@@ -1,17 +1,18 @@
 
 
-use std::ops::Index;
 use std::borrow::Borrow;
 use std::default::Default;
+use std::fmt;
+use std::fmt::Debug;
+use std::ops::Index;
 
 
 use crate::map_stitching::tile_structures::tile_edges::TileEdges;
-
 use crate::map_stitching::tile_structures::edges::Edge;
 use crate::map_stitching::tile_structures::sides::Side;
 use crate::map_stitching::tile_structures::edges::EdgeBits;
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Default, PartialEq, Eq)]
 pub struct Tile<'a, S: Borrow<str>> {
     pub tile_id: u16,
     pub body_string: &'a str,
@@ -81,6 +82,12 @@ impl<'a, S: Borrow<str> + Default + From<String>> Tile<'a, S> {
         tile.edges.right = Edge::from(S::from(right_string));
         
         Ok(tile)
+    }
+}
+
+impl<'a, S: Borrow<str>> Debug for Tile<'a, S> {
+    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
+        write!(out, "tile ID {}", self.tile_id)
     }
 }
 

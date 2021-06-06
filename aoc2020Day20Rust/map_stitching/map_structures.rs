@@ -3,3 +3,4 @@ pub use placement_map::*;
 
 mod placement_position;
 mod adjacent_placements;
+mod tile_problem;

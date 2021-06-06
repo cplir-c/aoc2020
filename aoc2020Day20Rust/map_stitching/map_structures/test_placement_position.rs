@@ -25,6 +25,20 @@ fn test_iterator() {
 }
 
 #[test]
+fn test_iterator_length() {
+    let mut it = PlacementPositionIterator::new(3);
+    let mut i = 3 * 3;
+    loop {
+        eprintln!("it len {}, good len {}", it.len(), i);
+        assert!(i == it.len(), "\nmismatched placement iterator length: {} but should be {}", it.len(), i);
+        if it.next().is_none() {
+            break;
+        }
+        i -= 1;
+    }
+}
+
+#[test]
 fn test_backward_iterator() {
     let mut it = PlacementPositionIterator::new(3);
     let good_result = [

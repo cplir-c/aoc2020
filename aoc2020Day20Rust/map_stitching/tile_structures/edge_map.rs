@@ -3,13 +3,18 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::convert::From;
 
-use super::edge_placement::EdgePlacement;
-use super::edge_placement::EdgeReference;
-use super::tile_placement::TilePlacement;
+use super::EdgePlacement;
+use super::EdgeReference;
+use super::Tile;
+use super::TilePlacement;
 
 pub type EdgeMap<'a, 'b, S> = HashMap<EdgePlacement, Vec<EdgeReference<'a, 'b, S>>>;
 
-pub fn build_edge_map<'a, S: Borrow<str> + Clone>(placements: &'a[TilePlacement<'a, 'a, S>], edge_map: &mut EdgeMap<'a, 'a, S>) {
+pub fn build_edge_map<'a, S: Borrow<str> + Clone>
+  ( tiles: &'a [Tile<'a, S>]
+  , edge_map: &mut EdgeMap<'a, 'a, S>
+  ) {
+    let placements = tiles.iter().flat_map(|tile|{tile.into_iter()});
     for tile_placement in placements {
         for edge_reference in tile_placement.iter_edge_refs() {
             let edge_placement = EdgePlacement::from(&edge_reference);
@@ -171,7 +176,7 @@ mod tests {
         };
         
         let mut edge_map = EdgeMap::with_capacity(4 * TILE_COUNT * 8);
-        build_edge_map(&placements, &mut edge_map);
+        build_edge_map(&tiles[..], &mut edge_map);
         
         for placement in placements.iter() {
             for goal_ref in placement.iter_edge_refs() {

@@ -1,6 +1,8 @@
 
 use std::borrow::Borrow;
 use std::collections::HashSet;
+use std::fmt;
+use std::fmt::Debug;
 
 mod tile_structures;
 use tile_structures::*;
@@ -8,6 +10,8 @@ mod lib_square;
 use lib_square::*;
 mod map_structures;
 use map_structures::*;
+mod backtracking;
+use backtracking::*;
 
 fn gather_errors<T>(accum: Result<Vec<T>, String>, item: Result<T, String>) -> Result<Vec<T>, String> {
     match (item, accum) {
@@ -33,12 +37,30 @@ impl<S: Borrow<str>, R> ReturnAssembler<S, R> {
     }
 }
 
+#[repr(transparent)]
+struct DebugWrapper<S: Borrow<str>>{
+    s: S
+}
+impl<S: Borrow<str>> Debug for DebugWrapper<S> {
+    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
+        out.write_str(self.borrow())
+    }
+}
+impl<S: Borrow<str>> Borrow<str> for DebugWrapper<S> {
+    fn borrow(&self) -> &str {
+        self.s.borrow()
+    }
+}
+
 fn get_corner_product<S: Borrow<str>>(map_edge_length: usize, placements: &[&TilePlacement<S>]) -> u64 {
     println!("map placements:");
     for placement in placements {
         println!("{}\n", placement);
     }
-    print!("Map pieced together:\n{}", MapDisplay(placements));
+    println!("Map pieced together:\n{}", MapDisplay(unsafe {
+        // safe because DebugWrapper<S> has the same representation as S
+        std::mem::transmute::<&[&TilePlacement<S>], &[&TilePlacement<DebugWrapper<S>>]>(placements)
+    }));
     let tile_count = map_edge_length * map_edge_length;
     let mut result: u64 = placements[0].tile.tile_id as u64;
     result *= placements[map_edge_length - 1].tile.tile_id as u64;
@@ -52,54 +74,41 @@ impl<S: Borrow<str>> Default for ReturnAssembler<S, u64> {
         Self::new(get_corner_product)
     }
 }
-
 impl<'a, S: Borrow<str>, R> Borrow<fn(usize, &[&TilePlacement<S>]) -> R> for ReturnAssembler<S, R> {
     fn borrow(&self) -> &fn(usize, &[&TilePlacement<S>]) -> R {
         &self.fun
     }
 }
 
-use std::fmt;
 pub fn find_corner_id_product<S, R>(
     tiles_string: &'static str,
     return_assembler: ReturnAssembler<S, R>
   ) -> Result<R, String>
   where S: Borrow<str> + Clone + Default + From<String> + fmt::Debug {
-    let tile_count = tiles_string.split("\n\n").count();
-    println!("tile count: {}", tile_count);
-    // collect tile strings
-    let tiles_strings: Vec<&'static str> = {
-        let mut tiles_strings: Vec<&str> = Vec::with_capacity(tile_count);
-        tiles_strings.extend(tiles_string.split("\n\n"));
-        tiles_strings
-    };
     // parse tiles
-    let tiles_result: Result<Vec<Tile<S>>, String> = tiles_strings.iter()
-        .map(|string| {Tile::<S>::parse(*string)})
-        .fold(Result::Ok(Vec::with_capacity(tile_count)), gather_errors);
+    let tiles_result: Result<Vec<Tile<S>>, String> = tiles_string.split("\n\n")
+        .map(|string| {Tile::<S>::parse(string)})
+        .fold(Result::Ok(Vec::new()), gather_errors);
     // return errors if tile parsing failed
     let tiles: Vec<Tile<S>> = match tiles_result {
         Ok(tiles) => tiles,
         Err(errs) => { return Err(format!("Errors while parsing tiles:\n{}", errs)); }
     };
-    let all_placements: Vec<TilePlacement<S>> = tiles.iter().flat_map(|tile|{tile.into_iter()}).collect();
-    if all_placements.is_empty() {
-        return Err("Error: empty All Placements vector".to_string())
-    }
+
+    let tile_count = tiles.len();
+    println!("tile count: {}", tile_count);
+    
     let edge_map = {
         let mut edge_map = EdgeMap::with_capacity(8 * tile_count);
-        build_edge_map(&all_placements, &mut edge_map);
+        build_edge_map(&tiles[..], &mut edge_map);
         edge_map
     };
-    if all_placements.is_empty() {
-        return Err("Error: empty All Placements vector after edge map built".to_string());
-    }
     
     println!("build data structures, calculating tile map...");
     let corner_id_product = piece_together_map(&tiles, &edge_map, return_assembler);
     match corner_id_product {
         Some(product) => Ok(product),
-        None => Err(format!("failed to build map with edges {:?}...\nplacement map:\n{}", edge_map, MapDisplay(all_placements.as_slice())))
+        None => Err(format!("failed to build map with edges {:?}...", edge_map))
     }
 }
 
@@ -107,7 +116,8 @@ fn assemble_return<'a, S: Borrow<str>, R>
   ( edge_length: usize
   , placements: PlacementMap<TilePlacement<'a, 'a, S>>
   , return_assembler: ReturnAssembler<S, R>
-  , ) -> R {
+  ) -> R {
+    println!("placement dimensions: {} long, {} across", placements.capacity(), placements.side_length());
     let placed = placements.into_slice().unwrap();
     {
         let fun: &fn(usize, &[&TilePlacement<S>]) -> R = return_assembler.borrow();
@@ -116,11 +126,11 @@ fn assemble_return<'a, S: Borrow<str>, R>
 }
 
 fn piece_together_map<'a, S: Borrow<str> + Clone, R>
-  ( tiles: &[Tile<'a, S>]
+  ( all_tiles: &[Tile<'a, S>]
   , edge_map: &'a EdgeMap<'a, 'a, S>
   , return_assembler: ReturnAssembler<S, R>
   ) -> Option<R> {
-    let tile_count: usize = tiles.len();
+    let tile_count: usize = all_tiles.len();
     println!("tile count {:?}", tile_count);
     let edge_length = isqrt(tile_count);
     print!("tile count: {}, map side length: {}", tile_count, edge_length);
@@ -129,13 +139,11 @@ fn piece_together_map<'a, S: Borrow<str> + Clone, R>
     let mut edge_reference_slices = Vec::<&[EdgeReference<S>]>::with_capacity(tile_count);
     
     edge_reference_slices.push(&[]);
-    for tile in tiles {
-        {
-            placed_tile_ids.insert(tile.tile_id);
-        }
+    for tile in all_tiles {
+        placed_tile_ids.insert(tile.tile_id);
         // WLOG only consider the first orientation for each tile
         // rotating the root tile is equivalent to rotating the entire board
-        let placement = {
+        let placement: &TilePlacement<S> = {
             let placement = tile.into_iter().next().unwrap();
             let edge_placement = placement.get_edge_placement(Side::Top);
             let place_ref_vec: &Vec<EdgeReference<S>> = edge_map.get(&edge_placement).unwrap();
@@ -147,7 +155,7 @@ fn piece_together_map<'a, S: Borrow<str> + Clone, R>
                     break;
                 }
             }
-            good_placement.unwrap()
+            good_placement.expect("failed to self-lookup edge reference")
         };
         if placements.push(&placement).is_err() {
             return Some(assemble_return(edge_length, placements, return_assembler));
@@ -163,17 +171,17 @@ fn piece_together_map<'a, S: Borrow<str> + Clone, R>
         }
         
         placements.pop();
-        {
-            placed_tile_ids.remove(&tile.tile_id);
-        }
+        placed_tile_ids.remove(&tile.tile_id);
     }
     None
 }
 
+
+
 /// Backtrack stitching
 /// ------------------
 /// This function takes the precalculated tile data
-/// and the currently single placed tile data and tries to find
+/// and the currently placed single tile data and tries to find
 /// a solution to edge matching by backtracking
 /// 
 fn backtrack_stitching<'a, 'b, 'c, S>(

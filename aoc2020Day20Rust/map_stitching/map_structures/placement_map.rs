@@ -8,14 +8,14 @@ use super::placement_position::PlacementPositionIterator;
 
 type PlacementArray<'a, T> = Box<[Option<&'a T>]>;
 
-#[derive(Default)]
-pub struct PlacementMap<'a, T> {
+#[derive(Default, Clone)]
+pub struct PlacementMap<'a, T:?Sized> {
     placements: PlacementArray<'a, T>,
     positions: PlacementPositionIterator,
     peek_cache: Option<Option<PlacementPosition>>
 }
 
-impl<'a, T> PlacementMap<'a, T> {
+impl<'a, T:?Sized> PlacementMap<'a, T> {
     pub fn new(side_length: u16) -> Self {
         let total_size: usize = (side_length as usize).pow(2);
         let placements: PlacementArray<'a, T> = vec![None; total_size].into();
@@ -25,28 +25,35 @@ impl<'a, T> PlacementMap<'a, T> {
             peek_cache: None
         }
     }
-    fn side_length(&self) -> u16 {
+    pub fn side_length(&self) -> u16 {
         self.positions.side_length()
+    }
+    pub fn capacity(&self) -> usize {
+        self.placements.len()
+    }
+    pub fn clear(&self) {
+        self.positions = PlacementPositionIterator::new(self.positions.side_length());
     }
 }
 
-impl<'a, T> Index<PlacementPosition> for PlacementMap<'a, T> {
+impl<'a, T:?Sized> Index<PlacementPosition> for PlacementMap<'a, T> {
     type Output = Option<&'a T>;
     fn index(&'_ self, pos: PlacementPosition) -> &'_ Option<&'a T> {
         let index = pos.flat_position(self.side_length()) as usize;
         &self.placements.get(index).expect("failed to const index placements array")
     }
 }
-impl<'a, T> IndexMut<PlacementPosition> for PlacementMap<'a, T> {
+impl<'a, T:?Sized> IndexMut<PlacementPosition> for PlacementMap<'a, T> {
     fn index_mut(self: &mut PlacementMap<'a, T>, pos: PlacementPosition) -> &mut Option<&'a T> {
         let index = pos.flat_position(self.side_length()) as usize;
         (&mut self.placements).get_mut(index).expect("failed to index placements array")
     }
 }
 
+#[derive(Debug)]
 pub struct SquareMapFullError{}
 
-impl<'a, T> PlacementMap<'a, T> {
+impl<'a, T:?Sized> PlacementMap<'a, T> {
     pub fn len(&'a self) -> usize {
         let len = self.placements.len() - self.positions.len();
         if self.peek_cache.is_some() {
@@ -113,12 +120,12 @@ impl<'a, T> PlacementMap<'a, T> {
     }
 }
 
-pub struct PlacementMapIterator<'a, 'b, T> {
+pub struct PlacementMapIterator<'a, 'b, T:?Sized> {
     map: &'b PlacementMap<'a, T>,
     positions: PlacementPositionIterator
 }
 
-impl<'a, T> IntoIterator for &'a PlacementMap<'a, T> {
+impl<'a, T:?Sized> IntoIterator for &'a PlacementMap<'a, T> {
     type IntoIter = PlacementMapIterator<'a, 'a, T>;
     type Item = &'a T;
     fn into_iter(self) -> Self::IntoIter {
@@ -129,7 +136,7 @@ impl<'a, T> IntoIterator for &'a PlacementMap<'a, T> {
     }
 }
 
-impl<'a, 'b, T> Iterator for PlacementMapIterator<'a, 'b, T> {
+impl<'a, 'b, T:?Sized> Iterator for PlacementMapIterator<'a, 'b, T> {
     type Item = &'a T;
     fn next(&mut self) -> Option<&'a T> {
         self.positions.next().and_then(|pos|{
@@ -138,3 +145,6 @@ impl<'a, 'b, T> Iterator for PlacementMapIterator<'a, 'b, T> {
     }
 }
 
+#[cfg(test)]
+#[path="./test_placement_map.rs"]
+mod test_placement_map;

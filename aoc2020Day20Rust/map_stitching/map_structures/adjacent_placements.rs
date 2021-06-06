@@ -1,11 +1,11 @@
 
 use super::placement_position::PlacementPosition;
 
-pub struct AdjacentPlacements<'a, T> {
+pub struct AdjacentPlacements<'a, T: ?Sized> {
     up: Option<&'a T>,
     left: Option<&'a T>
 }
-impl<'a, T> AdjacentPlacements<'a, T> {
+impl<'a, T: ?Sized> AdjacentPlacements<'a, T> {
     pub fn new(up: Option<&'a T>, left: Option<&'a T>) -> Self {
         AdjacentPlacements {
             up, left
