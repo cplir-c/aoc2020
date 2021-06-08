@@ -1,28 +1,9 @@
 
-fn go_backtrack<'a, S: ?Sized, C: Clone>
-  ( this: &'a S
-  , candidate_vec: &'a mut Vec<C>
-  , candidate: C
-  ) where S: BFSProblem<'a, Candidate=C> {
-    let possible_candidate = this.next_extension(candidate.clone());
-    if let Some(candidate) = possible_candidate {
-        candidate_vec.push(candidate);
-    } else {
-        candidate_vec.pop();
-        while let Some(candidate) = candidate_vec.last_mut() {
-            match this.next_extension(candidate.clone()) {
-                None => { candidate_vec.pop(); },
-                Some(next_candidate) => {
-                    *candidate = next_candidate;
-                    break;
-                }
-            };
-        }
-    }
-}
+use std::borrow::ToOwned;
+
 
 pub trait BFSProblem<'a> {
-    type Candidate: Clone;
+    type Candidate: ToOwned<Owned=Self::Candidate>;
     fn root_candidate(&'a self) -> Self::Candidate;
     fn is_impossible(&self, candidate: &Self::Candidate) -> bool;
     fn is_solution(&self, candidate: &Self::Candidate) -> bool;
@@ -41,9 +22,9 @@ pub trait BFSProblem<'a> {
             return Some(candidate);
         }
         {
-            let mut possible_candidate = self.first_extension(candidate.clone());
+            let mut possible_candidate = self.first_extension(candidate.to_owned());
             while let Some(new_candidate) = possible_candidate {
-                let solution = self._recursive_backtrack(new_candidate.clone());
+                let solution = self._recursive_backtrack(new_candidate.to_owned());
                 if solution.is_some() {
                     return solution;
                 }
@@ -66,11 +47,11 @@ pub trait BFSProblem<'a> {
             let candidate = match candidate_vec.last() {
                 // if the root was popped, we failed to find a solution
                 None => { return None; },
-                Some(candidate) => candidate.clone()
+                Some(candidate) => candidate.to_owned()
             };
             
             if self.is_impossible(&candidate) {
-                go_backtrack(self, &mut candidate_vec, candidate.clone());
+                go_backtrack(self, &mut candidate_vec, candidate.to_owned());
             } else if self.is_solution(&candidate) {
                 return Some(candidate);
             }
@@ -78,6 +59,28 @@ pub trait BFSProblem<'a> {
             if let Some(new_candidate) = self.first_extension(candidate) {
                 candidate_vec.push(new_candidate);
             }
+        }
+    }
+}
+
+fn go_backtrack<'a, S: ?Sized, C: ToOwned<Owned=C>>
+  ( this: &'a S
+  , candidate_vec: &mut Vec<C>
+  , candidate: C
+  ) where S: BFSProblem<'a, Candidate=C> {
+    let possible_candidate = this.next_extension(candidate.to_owned());
+    if let Some(candidate) = possible_candidate {
+        candidate_vec.push(candidate);
+    } else {
+        candidate_vec.pop();
+        while let Some(candidate) = candidate_vec.last_mut() {
+            match this.next_extension(candidate.to_owned()) {
+                None => { candidate_vec.pop(); },
+                Some(next_candidate) => {
+                    *candidate = next_candidate;
+                    break;
+                }
+            };
         }
     }
 }

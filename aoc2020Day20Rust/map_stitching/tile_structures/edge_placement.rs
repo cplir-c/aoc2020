@@ -40,20 +40,28 @@ impl<'a, 'b, S: Borrow<str>> Iterator for PlacementEdgePlacementIterator<'a, 'b,
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct EdgeReference<'a, 'b, S: Borrow<str>> {
     pub side: Side,
     pub placement: TilePlacement<'a, 'b, S>
 }
 
-impl<'a, 'b, S: Borrow<str> + Clone> Copy for EdgeReference<'a, 'b, S> {}
+impl<'a, 'b, S: Borrow<str>> Copy for EdgeReference<'a, 'b, S> {}
+impl<'a, 'b, S: Borrow<str>> Clone for EdgeReference<'a, 'b, S> {
+    fn clone(&self) -> Self {
+        Self {
+            side: self.side,
+            placement: self.placement
+        }
+    } 
+}
 
 pub struct PlacementEdgeReferenceIterator<'a, 'b, S: Borrow<str>> {
     pub side_iter: SideIterator,
     pub this: &'b TilePlacement<'a, 'b, S>
 }
 
-impl<'a, 'b, S: Borrow<str> + Clone> Iterator for PlacementEdgeReferenceIterator<'a, 'b, S> {
+impl<'a, 'b, S: Borrow<str>> Iterator for PlacementEdgeReferenceIterator<'a, 'b, S> {
     type Item = EdgeReference<'a, 'b, S>;
     fn next(&mut self) -> Option<<Self as Iterator>::Item> {
         self.side_iter.next().map(|side|{self.this.get_edge_ref(side)})

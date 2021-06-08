@@ -21,6 +21,7 @@ fn example_test_good_assembly() {
             let tile_body_length = tiles.get(0)
                 .expect("failed to find a tile to peek at")
                 .tile.body_string.len();
+            let map_width = map_width as usize;
             let mut out = String::with_capacity(
                 map_width * map_width * tile_body_length
             );

@@ -21,13 +21,21 @@ use super::edge_placement::EdgeReference;
 use super::edge_placement::PlacementEdgePlacementIterator;
 use super::edge_placement::PlacementEdgeReferenceIterator;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct TilePlacement<'a, 'b, S: Borrow<str>> {
     pub orientation: TileOrientation,
     pub tile: &'b Tile<'a, S>
 }
 
-impl<'a, 'b, S: Borrow<str> + Clone> Copy for TilePlacement<'a, 'b, S> {}
+impl<'a, 'b, S: Borrow<str>> Copy for TilePlacement<'a, 'b, S> {}
+impl<'a, 'b, S: Borrow<str>> Clone for TilePlacement<'a, 'b, S> {
+    fn clone(&self) -> Self {
+        TilePlacement {
+            orientation: self.orientation,
+            tile: self.tile
+        }
+    }
+}
 
 pub struct TilePlacementIterator<'a, 'b, S: Borrow<str>> {
     tile: &'b Tile<'a, S>,
@@ -160,20 +168,17 @@ impl<'a, 'b, S: Borrow<str>> Index<Side> for TilePlacement<'a, 'b, S> {
     }
 }
 
-impl<'a, 'b, S: Borrow<str> + Clone> TilePlacement<'a, 'b, S> {
+impl<'a, 'b, S: Borrow<str>> TilePlacement<'a, 'b, S> {
     pub fn get_edge_ref(&self, side: Side) -> EdgeReference<'a, 'b, S>{
         EdgeReference {
             side,
             placement: *self
         }
     }
-}
-
-impl<'a, 'b, S: Borrow<str>> TilePlacement<'a, 'b, S> {
-    pub fn iter_edge_refs(&self) -> PlacementEdgeReferenceIterator<S> {
+    pub fn iter_edge_refs<'c>(&'c self) -> PlacementEdgeReferenceIterator<'b, 'c, S> {
         PlacementEdgeReferenceIterator {
             side_iter: SideIterator::default(),
-            this: &self
+            this: self
         }
     }
     pub fn get_edge_placement(&self, side: Side) -> EdgePlacement {

@@ -27,4 +27,5 @@ pub use edge_placement::EdgeReference;
 mod edge_map;
 pub use edge_map::EdgeMap;
 pub use edge_map::build_edge_map;
+pub use edge_map::lookup_tile;
 

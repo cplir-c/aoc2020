@@ -31,7 +31,7 @@ impl<'a, T:?Sized> PlacementMap<'a, T> {
     pub fn capacity(&self) -> usize {
         self.placements.len()
     }
-    pub fn clear(&self) {
+    pub fn clear(&mut self) {
         self.positions = PlacementPositionIterator::new(self.positions.side_length());
     }
 }
@@ -94,7 +94,7 @@ impl<'a, T:?Sized> PlacementMap<'a, T> {
             positions.next()
         })
     }
-    pub fn push(&mut self, value: &'a T) -> Result<(), SquareMapFullError> {
+    pub fn push(&'_ mut self, value: &'a T) -> Result<(), SquareMapFullError> {
         match self.peek_cache.as_mut() {
             Some(ref mut next) => next.take(),
             None => self.positions.next()
@@ -116,6 +116,27 @@ impl<'a, T:?Sized> PlacementMap<'a, T> {
                 *out = None;
                 value
             })
+        })
+    }
+    fn last_position(&self) -> Option<PlacementPosition> {
+        if let Some(Some(_peeked)) = self.peek_cache {
+            // peek cache and current position will return equivalent positions
+            self.positions.peek_back()
+        } else {
+            // if the peek cache is None or Some(None), current position is valid
+            // if it's Some(None) current position is valid because
+            // the iterator can't advance more
+            self.positions.current_position()
+        }
+    }
+    pub fn replace_last(&mut self, new_t: &'a T) -> Option<&'a T> {
+        self.last_position().and_then(|position|{
+            let old_t = self[position];
+            if old_t.is_none() {
+                panic!("failed to find inner edge of Some region");
+            }
+            self[position] = Some(new_t);
+            old_t
         })
     }
 }

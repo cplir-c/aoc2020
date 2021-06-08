@@ -131,6 +131,83 @@ impl PlacementPositionIterator {
     pub fn side_length(&self) -> u16 {
         self.side_length
     }
+    pub fn current_position(&self) -> Option<PlacementPosition> {
+        self.previous
+    }
+    pub fn peek_back(&self) -> Option<PlacementPosition> {
+        self._peek_back().map(|state| {
+            PlacementPosition {
+                row: state.1, // Y
+                col: state.0  // X
+            }
+        })
+    }
+    fn _peek_back(&self) -> Option<(u16, u16, Mode)> {
+        self.previous.and_then(|pos|{
+            let (x, y, mode) = (pos.col, pos.row, self.mode);
+            
+            let new_state = {
+                if x == 0 && y == 0 {
+                    return None;
+                } else if x == 0 && mode == REV_LEFT {
+                    (x, y - 1, REV_RIGHT)
+                } else if y == 0 && mode == REV_UP {
+                    (x - 1, y, REV_DOWN)
+                } else if x == y {
+                    if mode == REV_RIGHT {
+                        (x, y - 1, REV_UP)
+                    } else { // going REV_DOWN
+                        (x - 1, y, REV_LEFT)
+                    }
+                } else {
+                    match mode {
+                        REV_LEFT => (x - 1, y, mode),
+                        REV_RIGHT => (x + 1, y, mode),
+                        REV_UP => (x, y - 1, mode),
+                        REV_DOWN => (x, y + 1, mode)
+                    }
+                }
+            };
+            
+            Some(new_state)
+        })
+    }
+    fn peek(&self) -> Option<(u16, u16, Mode)> {
+        match self.previous {
+            None => {
+                let pos = PlacementPosition::default();
+                Some((pos.col, pos.row, Mode::default()))
+            },
+            Some(pos) => {
+                let (x, y, mode) = (pos.col, pos.row, self.mode);
+                let new_state = {
+                    if x == 0 && mode == Mode::Left {
+                        (x, y + 1, Mode::Right)
+                    } else if y == 0 && mode == Mode::Up {
+                        (x + 1, y, Mode::Down)
+                    } else if x == y {
+                        if mode == Mode::Right {
+                            (x, y - 1, Mode::Up)
+                        } else {
+                            (x - 1, y, Mode::Left)
+                        }
+                    } else {
+                        match mode {
+                            Mode::Left => (x - 1, y, mode),
+                            Mode::Right => (x + 1, y, mode),
+                            Mode::Up => (x, y - 1, mode),
+                            Mode::Down => (x, y + 1, mode)
+                        }
+                    }
+                };
+                if new_state.0 >= self.side_length || new_state.1 >= self.side_length {
+                    return None;
+                } else {
+                    Some(new_state)
+                }
+            }
+        }
+    }
 }
 
 impl Default for PlacementPositionIterator {
@@ -158,39 +235,12 @@ const REV_DOWN: Mode = Mode::Up;
 impl DoubleEndedIterator for PlacementPositionIterator {
     fn next_back(&mut self) -> Option<<Self as Iterator>::Item> {
         let old: Option<PlacementPosition> = self.previous;
-        self.previous = old.and_then(|pos|{
-            let (x, y, mode) = (pos.col, pos.row, self.mode);
-            
-            let new_state = {
-                if x == 0 && y == 0 {
-                    self.mode = Mode::Left; // ready to go forwards again
-                    self.previous = None;
-                    return None;
-                } else if x == 0 && mode == REV_LEFT {
-                    (x, y - 1, REV_RIGHT)
-                } else if y == 0 && mode == REV_UP {
-                    (x - 1, y, REV_DOWN)
-                } else if x == y {
-                    if mode == REV_RIGHT {
-                        (x, y - 1, REV_UP)
-                    } else { // going REV_DOWN
-                        (x - 1, y, REV_LEFT)
-                    }
-                } else {
-                    match mode {
-                        REV_LEFT => (x - 1, y, mode),
-                        REV_RIGHT => (x + 1, y, mode),
-                        REV_UP => (x, y - 1, mode),
-                        REV_DOWN => (x, y + 1, mode)
-                    }
-                }
-            };
-            
+        self.previous = self._peek_back().map(|new_state|{
             self.mode = new_state.2;
-            Some(PlacementPosition {
+            PlacementPosition {
                 row: new_state.1,
                 col: new_state.0
-            })
+            }
         });
         old
     }
@@ -198,41 +248,13 @@ impl DoubleEndedIterator for PlacementPositionIterator {
 impl Iterator for PlacementPositionIterator {
     type Item = PlacementPosition;
     fn next(&mut self) -> Option<<Self as Iterator>::Item> {
-        self.previous = match self.previous {
-            None => Some(PlacementPosition::default()),
-            Some(pos) => {
-                let (x, y, mode) = (pos.col, pos.row, self.mode);
-                let new_state = {
-                    if x == 0 && mode == Mode::Left {
-                        (x, y + 1, Mode::Right)
-                    } else if y == 0 && mode == Mode::Up {
-                        (x + 1, y, Mode::Down)
-                    } else if x == y {
-                        if mode == Mode::Right {
-                            (x, y - 1, Mode::Up)
-                        } else {
-                            (x - 1, y, Mode::Left)
-                        }
-                    } else {
-                        match mode {
-                            Mode::Left => (x - 1, y, mode),
-                            Mode::Right => (x + 1, y, mode),
-                            Mode::Up => (x, y - 1, mode),
-                            Mode::Down => (x, y + 1, mode)
-                        }
-                    }
-                };
-                if new_state.0 >= self.side_length || new_state.1 >= self.side_length {
-                    return None;
-                }
-                
-                self.mode = new_state.2;
-                Some(PlacementPosition{
-                    row: new_state.1,
-                    col: new_state.0
-                })
+        self.previous = self.peek().map(|new_state|{
+            self.mode = new_state.2;
+            PlacementPosition {
+                row: new_state.1,
+                col: new_state.0
             }
-        };
+        });
         self.previous
     }
 }
