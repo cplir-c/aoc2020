@@ -22,13 +22,13 @@ use super::edge_placement::PlacementEdgePlacementIterator;
 use super::edge_placement::PlacementEdgeReferenceIterator;
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct TilePlacement<'a, 'b, S: Borrow<str>> {
+pub struct TilePlacement<'a, S: Borrow<str>> {
     pub orientation: TileOrientation,
-    pub tile: &'b Tile<'a, S>
+    pub tile: &'a Tile<'a, S>
 }
 
-impl<'a, 'b, S: Borrow<str>> Copy for TilePlacement<'a, 'b, S> {}
-impl<'a, 'b, S: Borrow<str>> Clone for TilePlacement<'a, 'b, S> {
+impl<'a, 'b, S: Borrow<str>> Copy for TilePlacement<'a, S> {}
+impl<'a, 'b, S: Borrow<str>> Clone for TilePlacement<'a, S> {
     fn clone(&self) -> Self {
         TilePlacement {
             orientation: self.orientation,
@@ -37,14 +37,14 @@ impl<'a, 'b, S: Borrow<str>> Clone for TilePlacement<'a, 'b, S> {
     }
 }
 
-pub struct TilePlacementIterator<'a, 'b, S: Borrow<str>> {
-    tile: &'b Tile<'a, S>,
+pub struct TilePlacementIterator<'a, S: Borrow<str>> {
+    tile: &'a Tile<'a, S>,
     orientation_iter: TileOrientationIterator
 }
 
-impl<'a, 'b, S: Borrow<str>> IntoIterator for &'b Tile<'a, S> {
-    type Item = TilePlacement<'a, 'b, S>;
-    type IntoIter = TilePlacementIterator<'a, 'b, S>;
+impl<'a, 'b, S: Borrow<str>> IntoIterator for &'a Tile<'a, S> {
+    type Item = TilePlacement<'a, S>;
+    type IntoIter = TilePlacementIterator<'a, S>;
     fn into_iter(self) -> <Self as IntoIterator>::IntoIter {
         TilePlacementIterator {
             tile: self,
@@ -53,8 +53,8 @@ impl<'a, 'b, S: Borrow<str>> IntoIterator for &'b Tile<'a, S> {
     }
 }
 
-impl<'a, 'b, S: Borrow<str>> Iterator for TilePlacementIterator<'a, 'b, S> {
-    type Item = TilePlacement<'a, 'b, S>;
+impl<'a, 'b, S: Borrow<str>> Iterator for TilePlacementIterator<'a, S> {
+    type Item = TilePlacement<'a, S>;
     fn next(&mut self) -> Option<<Self as Iterator>::Item> {
         self.orientation_iter.next().map(|orientation|{
             TilePlacement {
@@ -65,7 +65,7 @@ impl<'a, 'b, S: Borrow<str>> Iterator for TilePlacementIterator<'a, 'b, S> {
     }
 }
 
-impl<'a, 'b, S: Borrow<str>> Display for TilePlacement<'a, 'b, S> {
+impl<'a, 'b, S: Borrow<str>> Display for TilePlacement<'a, S> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         /* Fw -> Forward
          * Bw -> Backward
@@ -108,7 +108,7 @@ impl<'a, 'b, S: Borrow<str>> Display for TilePlacement<'a, 'b, S> {
     }
 }
 
-impl<'a, 'b, S: Borrow<str>> Index<Side> for TilePlacement<'a, 'b, S> {
+impl<'a, 'b, S: Borrow<str>> Index<Side> for TilePlacement<'a, S> {
     type Output = EdgeBits;
     fn index(&self, index: Side) -> &Self::Output {
         /* Fw -> Forward
@@ -168,14 +168,14 @@ impl<'a, 'b, S: Borrow<str>> Index<Side> for TilePlacement<'a, 'b, S> {
     }
 }
 
-impl<'a, 'b, S: Borrow<str>> TilePlacement<'a, 'b, S> {
-    pub fn get_edge_ref(&self, side: Side) -> EdgeReference<'a, 'b, S>{
+impl<'a, 'b, S: Borrow<str>> TilePlacement<'a, S> {
+    pub fn get_edge_ref(&self, side: Side) -> EdgeReference<'a, S>{
         EdgeReference {
             side,
             placement: *self
         }
     }
-    pub fn iter_edge_refs<'c>(&'c self) -> PlacementEdgeReferenceIterator<'b, 'c, S> {
+    pub fn iter_edge_refs<'c>(&'c self) -> PlacementEdgeReferenceIterator<'a, 'c, S> {
         PlacementEdgeReferenceIterator {
             side_iter: SideIterator::default(),
             this: self

@@ -4,11 +4,11 @@ use std::borrow::ToOwned;
 
 pub trait BFSProblem<'a> {
     type Candidate: ToOwned<Owned=Self::Candidate>;
-    fn root_candidate(&'a self) -> Self::Candidate;
+    fn root_candidate<'b>(&'b self) -> Self::Candidate;
     fn is_impossible(&self, candidate: &Self::Candidate) -> bool;
     fn is_solution(&self, candidate: &Self::Candidate) -> bool;
-    fn first_extension(&'a self, candidate: Self::Candidate) -> Option<Self::Candidate>;
-    fn next_extension(&'a self, previous_child: Self::Candidate) -> Option<Self::Candidate>;
+    fn first_extension<'b>(&'b self, candidate: Self::Candidate) -> Option<Self::Candidate>;
+    fn next_extension<'b>(&'b self, previous_child: Self::Candidate) -> Option<Self::Candidate>;
 
     /// used for mutable `Candidate`s
     fn remove_extension(&'a self, _candidate: Self::Candidate) {}
@@ -34,10 +34,10 @@ pub trait BFSProblem<'a> {
         self.remove_extension(candidate);
         None
     }
-    fn vec_backtrack(&'a self) -> Option<Self::Candidate> {
+    fn vec_backtrack<'b>(&'b self) -> Option<Self::Candidate> {
         self.vec_backtrack_with_capacity(16)
     }
-    fn vec_backtrack_with_capacity(&'a self, capacity: usize) -> Option<Self::Candidate> {
+    fn vec_backtrack_with_capacity<'b>(&'b self, capacity: usize) -> Option<Self::Candidate> {
         let root_candidate = self.root_candidate();
         let mut candidate_vec = Vec::with_capacity(capacity);
         candidate_vec.push(root_candidate);
@@ -63,9 +63,9 @@ pub trait BFSProblem<'a> {
     }
 }
 
-fn go_backtrack<'a, S: ?Sized, C: ToOwned<Owned=C>>
-  ( this: &'a S
-  , candidate_vec: &mut Vec<C>
+fn go_backtrack<'a, 'b, 'c, S: ?Sized, C: ToOwned<Owned=C>>
+  ( this: &'b S
+  , candidate_vec: &'c mut Vec<C>
   , candidate: C
   ) where S: BFSProblem<'a, Candidate=C> {
     let possible_candidate = this.next_extension(candidate.to_owned());

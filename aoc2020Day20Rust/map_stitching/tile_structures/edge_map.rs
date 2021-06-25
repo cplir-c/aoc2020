@@ -7,28 +7,31 @@ use super::EdgePlacement;
 use super::EdgeReference;
 use super::Side;
 use super::Tile;
+use super::TilePlacement;
 
-pub type EdgeMap<'a, 'b, S> = HashMap<EdgePlacement, Vec<EdgeReference<'a, 'b, S>>>;
+pub type EdgeMap<'a, S> = HashMap<EdgePlacement, Vec<EdgeReference<'a, S>>>;
 
-pub fn build_edge_map<'a, S: Borrow<str>>
+pub fn build_edge_map<'a, 'b, S: Borrow<str>>
   ( tiles: &'a [Tile<'a, S>]
-  , edge_map: &'_ mut EdgeMap<'a, 'a, S>
+  , edge_map: &'b mut EdgeMap<'a, S>
   ) {
     let placements = tiles.iter().flat_map(|tile|{tile.into_iter()});
     for tile_placement in placements {
+        let tile_placement: TilePlacement<'a, S> = tile_placement;
+        
         for edge_reference in tile_placement.iter_edge_refs() {
             let edge_placement = EdgePlacement::from(&edge_reference);
-            
+            let edge_ref: EdgeReference<S> = edge_reference;
             edge_map.entry(edge_placement)
-                .or_default().push(edge_reference);
+                .or_default().push(edge_ref);
         }
     }
 }
 
-pub fn lookup_tile<'a, S: Borrow<str>>
+pub fn lookup_tile<'a, 'b, S: Borrow<str>>
   ( tile: &'_ Tile<S>
-  , edge_map: &'a EdgeMap<'a, 'a, S>
-  ) -> Option<&'a EdgeReference<'a, 'a, S>> {
+  , edge_map: &'b EdgeMap<'a, S>
+  ) -> Option<&'b EdgeReference<'a, S>> {
     let goal_tile_id: u16 = tile.tile_id;
     let placement = tile.into_iter().next();
     if placement.is_none() {
@@ -36,7 +39,7 @@ pub fn lookup_tile<'a, S: Borrow<str>>
     }
     let goal_placement = placement.unwrap();
     let lookup_edge = goal_placement.get_edge_placement(Side::default());
-    let edge_ref_vec: Option<&'a Vec<EdgeReference<'a, 'a, S>>> = edge_map.get(&lookup_edge);
+    let edge_ref_vec: Option<&'b Vec<EdgeReference<'a, S>>> = edge_map.get(&lookup_edge);
     if edge_ref_vec.is_none() {
         return None;
     }
