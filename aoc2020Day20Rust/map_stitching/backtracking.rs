@@ -51,7 +51,7 @@ pub trait BFSProblem<'a> {
             };
             
             if self.is_impossible(&candidate) {
-                go_backtrack(self, &mut candidate_vec, candidate);
+                go_backtrack(self, &mut candidate_vec, candidate.to_owned());
             } else if self.is_solution(&candidate) {
                 return Some(candidate);
             }

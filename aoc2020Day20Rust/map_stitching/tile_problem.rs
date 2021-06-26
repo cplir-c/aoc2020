@@ -4,12 +4,12 @@ use std::cell::Cell;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::marker::PhantomData;
-use std::ops::Deref;
 
 use super::backtracking::BFSProblem;
 use super::tile_structures;
 use super::EdgeMap;
 use super::EdgeReference;
+use super::EdgePlacement;
 use super::PlacementMap;
 use super::Side;
 use super::Tile;
@@ -29,7 +29,7 @@ pub struct TileProblem<'a, 'b, S: Borrow<str>> {
 
 pub enum TileCandidate<'a, 'b, S: Borrow<str>> {
     RootTiles(Cell<&'b [Tile<'a, S>]>),
-    LeafTiles(Cell<&'b [&'a TilePlacement<'a, S>]>),
+    LeafTiles(Cell<&'b [EdgeReference<'a, S>]>),
 }
 impl<'a, 'b, S: Borrow<str>> TileCandidate<'a, 'b, S> {
     fn is_empty(&self) -> bool {
@@ -63,7 +63,7 @@ impl<'a, 'b, S: Borrow<str>> TileCandidate<'a, 'b, S> {
                 loop {
                     let placement = if let Some((first, slice_rest)) = placements_slice.split_first() {
                         placements_slice = slice_rest;
-                        first
+                        &first.placement
                     } else {
                         tile_placements.set(&[]);
                         return None;
@@ -159,10 +159,70 @@ impl<'a, 'b, S: Borrow<str>> BFSProblem<'b> for TileProblem<'a, 'b, S> {
         self.placements.borrow().len() == self.tiles.len()
     }
     fn first_extension(
-        &self,
-        candidate: <Self as BFSProblem<'b>>::Candidate,
+        &'b self,
+        _candidate: <Self as BFSProblem<'b>>::Candidate,
     ) -> Option<<Self as BFSProblem<'b>>::Candidate> {
-        
+        let (left_bits, up_bits) = {
+            let placements_ref = self.placements.borrow();
+            if let Some(position) = placements_ref.last_position() {
+                let nearby = placements_ref.get_adjacents(position);
+                (nearby.left().map(|l| l[Side::Right]),
+                   nearby.up().map(|u| u[Side::Bottom]))
+            } else {
+                return None;
+            }
+        };
+        let mut placements_slice = {
+            let edge_placement = if let Some(left) = left_bits {
+                EdgePlacement {
+                    side: Side::Left,
+                    bits: left
+                }
+            } else if let Some(up) = up_bits {
+                EdgePlacement {
+                    side: Side::Top,
+                    bits: up
+                }
+            } else {
+                panic!("failed to get nearby placed tiles on finding next layer")
+            };
+            if let Some(placement_vec) = self.edge_map.get(&edge_placement) {
+                placement_vec.as_slice()
+            } else {
+                return None;
+            }
+        };
+        loop {
+            let placement = if let Some((first, slice_rest)) = placements_slice.split_first() {
+                placements_slice = slice_rest;
+                &first.placement
+            } else {
+                return None;
+            };
+            // filter by adjacent tiles
+            if let Some(l_bits) = left_bits {
+                if l_bits != placement[Side::Left] {
+                    continue;
+                }
+            }
+            if let Some(u_bits) = up_bits {
+                if u_bits != placement[Side::Top] {
+                    continue;
+                }
+            }
+            // filter by unplaced tile ids
+            let tile_id = placement.tile.tile_id;
+            if self.placed_tile_ids.borrow().contains(&tile_id) {
+                continue;
+            }
+            // place tile
+            { // remove old placed tile's tile id
+                let mut mut_tile_ids = self.placed_tile_ids.borrow_mut();
+                // add new placed tile's tile id
+                assert!(mut_tile_ids.insert(tile_id));
+            }
+            return Some(TileCandidate::LeafTiles(Cell::new(placements_slice)));
+        }
     }
     fn next_extension(
         &'b self,
@@ -175,5 +235,10 @@ impl<'a, 'b, S: Borrow<str>> BFSProblem<'b> for TileProblem<'a, 'b, S> {
     }
     fn vec_backtrack(&'b self) -> Option<Self::Candidate> {
         self.vec_backtrack_with_capacity(self.tiles.len())
+    }
+    fn remove_extension(&'b self, _candidate: <Self as BFSProblem<'b>>::Candidate) {
+        // only called when there's something to remove
+        let placement = self.placements.borrow_mut().pop().unwrap();
+        assert!(self.placed_tile_ids.borrow_mut().remove(&placement.tile.tile_id));
     }
 }
