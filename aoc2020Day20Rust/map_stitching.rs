@@ -1,6 +1,5 @@
 
 use std::borrow::Borrow;
-use std::collections::HashSet;
 use std::fmt;
 use std::fmt::Debug;
 
@@ -30,11 +29,11 @@ fn gather_errors<T>(accum: Result<Vec<T>, String>, item: Result<T, String>) -> R
 
 #[repr(transparent)]
 pub struct ReturnAssembler<S: Borrow<str>, R>{
-    fun: fn(u16, &[&TilePlacement<S>]) -> R
+    fun: fn(u16, &[TilePlacement<S>]) -> R
 }
 
 impl<S: Borrow<str>, R> ReturnAssembler<S, R> {
-    pub fn new(fun: fn(u16, &[&TilePlacement<S>]) -> R) -> ReturnAssembler<S, R> {
+    pub fn new(fun: fn(u16, &[TilePlacement<S>]) -> R) -> ReturnAssembler<S, R> {
         ReturnAssembler{fun}
     }
 }
@@ -54,14 +53,14 @@ impl<S: Borrow<str>> Borrow<str> for DebugWrapper<S> {
     }
 }
 
-fn get_corner_product<S: Borrow<str>>(map_edge_length: u16, placements: &[&TilePlacement<S>]) -> u64 {
+fn get_corner_product<S: Borrow<str>>(map_edge_length: u16, placements: &[TilePlacement<S>]) -> u64 {
     println!("map placements:");
     for placement in placements {
         println!("{}\n", placement);
     }
     println!("Map pieced together:\n{}", MapDisplay(unsafe {
         // safe because DebugWrapper<S> has the same representation as S
-        std::mem::transmute::<&[&TilePlacement<S>], &[&TilePlacement<DebugWrapper<S>>]>(placements)
+        std::mem::transmute::<&[TilePlacement<S>], &[TilePlacement<DebugWrapper<S>>]>(placements)
     }));
     let map_edge_length = map_edge_length as usize;
     let tile_count = map_edge_length * map_edge_length;
@@ -77,8 +76,8 @@ impl<S: Borrow<str>> Default for ReturnAssembler<S, u64> {
         Self::new(get_corner_product)
     }
 }
-impl<'a, S: Borrow<str>, R> Borrow<fn(u16, &[&TilePlacement<S>]) -> R> for ReturnAssembler<S, R> {
-    fn borrow(&self) -> &fn(u16, &[&TilePlacement<S>]) -> R {
+impl<'a, S: Borrow<str>, R> Borrow<fn(u16, &[TilePlacement<S>]) -> R> for ReturnAssembler<S, R> {
+    fn borrow(&self) -> &fn(u16, &[TilePlacement<S>]) -> R {
         &self.fun
     }
 }
@@ -111,12 +110,12 @@ pub fn find_corner_id_product<S, R>(
 
 fn assemble_return<'a, S: Borrow<str>, R>
   ( edge_length: u16
-  , placed: Box<[&'a TilePlacement<'a, 'a, S>]>
+  , placed: Box<[TilePlacement<'a, S>]>
   , return_assembler: ReturnAssembler<S, R>
   ) -> R {
     println!("placement dimensions: {} long, {} across", placed.len(), edge_length);
     {
-        let fun: &fn(u16, &[&TilePlacement<S>]) -> R = return_assembler.borrow();
+        let fun: &fn(u16, &[TilePlacement<S>]) -> R = return_assembler.borrow();
         fun(edge_length, &placed[..])
     }
 }
@@ -131,16 +130,10 @@ fn piece_together_map<'a, S: Borrow<str>, R>
     print!("tile count: {}, map side length: {}", tile_count, edge_length);
     
     
-    let tile_placements = {
-        let tile_problem: TileProblem<S> = {
-            let tile_problem: TileProblem<S> = TileProblem::new(all_tiles, edge_length);
-            if tile_problem.vec_backtrack().is_none() {
-                return None;
-            }
-            tile_problem
-        };
-        // borrow of tile problem ends here
-        tile_problem.into_placements()
+    let tile_placements: Option<Box<[TilePlacement<'a, S>]>> = {
+        let tile_problem: TileProblem<S> = TileProblem::new(all_tiles, edge_length);
+        tile_problem.vec_backtrack()?;
+        tile_problem.as_placements()
     };
     Some(
         tile_placements

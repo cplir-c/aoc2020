@@ -53,7 +53,21 @@ impl<'a, T:?Sized> IndexMut<PlacementPosition> for PlacementMap<'a, T> {
 #[derive(Debug)]
 pub struct SquareMapFullError{}
 
-impl<'a, T:?Sized> PlacementMap<'a, T> {
+impl<'a, T: Copy> PlacementMap<'a, T> {
+    pub fn as_box(&self) -> Option<Box<[T]>> {
+        let mut mut_vec = Vec::<T>::with_capacity(self.placements.len());
+        for opt_item in self.placements.iter() {
+            match opt_item {
+                None => { return None; },
+                // otherwise load the next item into the vector
+                Some(&item) => mut_vec.push(item)
+            }
+        }
+        Some(mut_vec.into())
+    }
+}
+
+impl<'a, T> PlacementMap<'a, T> {
     pub fn len(&'a self) -> usize {
         let len = self.placements.len() - self.positions.len();
         if self.peek_cache.is_some() {
@@ -64,24 +78,6 @@ impl<'a, T:?Sized> PlacementMap<'a, T> {
     }
     pub fn as_slice(&'a self) -> &'a [Option<&'a T>] {
         &self.placements
-    }
-    pub fn into_slice(mut self) -> Option<Box<[&'a T]>> {
-        let mut mut_vec = Vec::<&'a T>::with_capacity(self.placements.len());
-        for opt_item in self.placements.iter_mut() {
-            match opt_item.take() {
-                None => {
-                    // ran into a hole, so put the items you took out back
-                    while !mut_vec.is_empty() {
-                        let item = mut_vec.pop();
-                        assert!(item.is_some());
-                        self.placements[mut_vec.len()] = item;
-                    }
-                    return None;
-                }, // otherwise load the next item into the vector
-                Some(item) => mut_vec.push(item)
-            }
-        }
-        Some(mut_vec.into())
     }
     pub fn get_adjacents(&'a self, pos: PlacementPosition) -> AdjacentPlacements<'a, T> {
         let slice: &[Option<&'a T>] = &self.placements;

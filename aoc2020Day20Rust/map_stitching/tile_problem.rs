@@ -16,19 +16,19 @@ use super::TilePlacement;
 
 mod borrow_owning;
 
-type TilePlacementMap<'a, S> = PlacementMap<'a, TilePlacement<'a, 'a, S>>;
+type TilePlacementMap<'a, 'b, S> = PlacementMap<'b, TilePlacement<'a, S>>;
 
 pub struct TileProblem<'a, 'b, S: Borrow<str>> {
     tiles: &'a [Tile<'a, S>],
-    edge_map: EdgeMap<'a, 'a, S>,
+    edge_map: EdgeMap<'a, S>,
     placed_tile_ids: HashSet<u16>,
-    placements: RefCell<TilePlacementMap<'a, S>>,
+    placements: RefCell<TilePlacementMap<'a, 'b, S>>,
     phantom: PhantomData<&'b TileCandidate<'a, 'b, S>>,
 }
 
-enum TileCandidate<'a, 'b, S: Borrow<str>> {
+pub enum TileCandidate<'a, 'b, S: Borrow<str>> {
     RootTiles(Cell<&'b [Tile<'a, S>]>),
-    LeafTiles(Cell<&'b [&'a TilePlacement<'a, 'a, S>]>),
+    LeafTiles(Cell<&'b [&'a TilePlacement<'a, S>]>),
 }
 impl<'a, 'b, S: Borrow<str>> TileCandidate<'a, 'b, S> {
     fn is_empty(&self) -> bool {
@@ -37,7 +37,7 @@ impl<'a, 'b, S: Borrow<str>> TileCandidate<'a, 'b, S> {
             TileCandidate::LeafTiles(places) => places.get().as_ref().is_empty(),
         }
     }
-    fn next_extension(&'_ self, edge_map: &'b EdgeMap<S>) -> Option<&'b TilePlacement<'b, 'b, S>> {
+    fn next_extension(&'_ self, edge_map: &'b EdgeMap<'a, S>) -> Option<&'b TilePlacement<'a, S>> {
         match self {
             TileCandidate::RootTiles(tiles) => tiles.get().split_last().and_then(|(last, rest)| {
                 tiles.set(rest);
@@ -73,31 +73,31 @@ impl<'a, 'b, S: Borrow<str>> TileProblem<'a, 'b, S> {
             phantom: PhantomData,
         }
     }
-    pub fn into_placements(self) -> Option<Box<[&'a TilePlacement<'a, 'a, S>]>> {
-        self.placements.into_inner().into_slice()
+    pub fn as_placements(&'b self) -> Option<Box<[TilePlacement<'a, S>]>> {
+        self.placements.borrow_mut().as_box()
     }
 }
 
-impl<'a, 'b, S: Borrow<str>> BFSProblem<'a> for TileProblem<'a, 'b, S> {
+impl<'a, 'b, S: Borrow<str>> BFSProblem<'b> for TileProblem<'a, 'b, S> {
     type Candidate = TileCandidate<'a, 'b, S>;
-    fn root_candidate(&'a self) -> <Self as BFSProblem>::Candidate {
-        let (first, tiles): (&Tile<S>, &[Tile<S>]) =
+    fn root_candidate(&'b self) -> <Self as BFSProblem<'b>>::Candidate {
+        let (first, tiles): (&'a Tile<S>, &'a [Tile<S>]) =
             self.tiles.split_first().expect("expected some tiles");
         // WLOG only consider an arbitrary orientation for each tile
         // rotating the root tile is equivalent to rotating the entire board
         
-        let first: &'a EdgeReference<S> = {
-            let edge_map: &'a EdgeMap<S> = &self.edge_map;
+        let first: &'b EdgeReference<S> = {
+            let edge_map: &'b EdgeMap<S> = &self.edge_map;
             super::lookup_tile(first, edge_map)
                 .expect("failed to lookup the same tile in edge map")
         };
-        let first: &TilePlacement<S> = &first.placement;
+        let first: &'b TilePlacement<'a, S> = &first.placement;
         {
-            let mut ref_placements: RefMut<'_, PlacementMap<'a, _>> = self.placements.borrow_mut();
-            let placements: &'_ mut PlacementMap<'a, _> = ref_placements.borrow_mut();
-            PlacementMap::<'a, _>::push(placements, first);
+            let mut ref_placements = self.placements.borrow_mut();
+            let placements: &'_ mut TilePlacementMap<'a, 'b, S> = ref_placements.borrow_mut();
+            placements.push(first);
         }
-        TileCandidate::RootTiles(Cell::new(tiles))
+        TileCandidate::<'a, 'b, S>::RootTiles(Cell::new(tiles))
     }
     fn is_impossible(&self, candidate: &Self::Candidate) -> bool {
         !self.is_solution(candidate) && candidate.is_empty()
@@ -107,21 +107,21 @@ impl<'a, 'b, S: Borrow<str>> BFSProblem<'a> for TileProblem<'a, 'b, S> {
     }
     fn first_extension(
         &self,
-        _candidate: <Self as BFSProblem<'a>>::Candidate,
-    ) -> Option<<Self as BFSProblem<'a>>::Candidate> {
+        _candidate: <Self as BFSProblem<'b>>::Candidate,
+    ) -> Option<<Self as BFSProblem<'b>>::Candidate> {
         todo!()
     }
     fn next_extension(
-        &'a self,
-        candidate: <Self as BFSProblem<'a>>::Candidate,
-    ) -> Option<<Self as BFSProblem<'a>>::Candidate> {
-        let next: Option<&TilePlacement<S>> = candidate.next_extension(&self.edge_map);
+        &'b self,
+        candidate: <Self as BFSProblem<'b>>::Candidate,
+    ) -> Option<<Self as BFSProblem<'b>>::Candidate> {
+        let next: Option<&'b TilePlacement<'a, S>> = candidate.next_extension(&self.edge_map);
         next.map(|new_placement| {
             self.placements.borrow_mut().replace_last(new_placement);
             candidate
         })
     }
-    fn vec_backtrack(&'a self) -> Option<Self::Candidate> {
+    fn vec_backtrack(&'b self) -> Option<Self::Candidate> {
         self.vec_backtrack_with_capacity(self.tiles.len())
     }
 }
