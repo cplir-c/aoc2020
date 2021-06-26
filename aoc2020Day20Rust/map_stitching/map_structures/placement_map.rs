@@ -114,7 +114,7 @@ impl<'a, T> PlacementMap<'a, T> {
             })
         })
     }
-    fn last_position(&self) -> Option<PlacementPosition> {
+    pub fn last_position(&self) -> Option<PlacementPosition> {
         if let Some(Some(_peeked)) = self.peek_cache {
             // peek cache and current position will return equivalent positions
             self.positions.peek_back()

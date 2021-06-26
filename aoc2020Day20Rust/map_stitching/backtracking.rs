@@ -51,7 +51,7 @@ pub trait BFSProblem<'a> {
             };
             
             if self.is_impossible(&candidate) {
-                go_backtrack(self, &mut candidate_vec, candidate.to_owned());
+                go_backtrack(self, &mut candidate_vec, candidate);
             } else if self.is_solution(&candidate) {
                 return Some(candidate);
             }
@@ -68,14 +68,22 @@ fn go_backtrack<'a, 'b, S: ?Sized, C: ToOwned<Owned=C>>
   , candidate_vec: &'b mut Vec<C>
   , candidate: C
   ) where S: BFSProblem<'a, Candidate=C> {
+    // if this candidate is impossible, try the next one
     let possible_candidate = this.next_extension(candidate.to_owned());
     if let Some(candidate) = possible_candidate {
-        candidate_vec.push(candidate);
+        if let Some(vec_spot) = candidate_vec.last_mut() {
+            *vec_spot = candidate;
+        } else {
+            panic!("Shouldn't have been empty if there was an impossible candidate to get here")
+        }
     } else {
-        candidate_vec.pop();
         while let Some(candidate) = candidate_vec.last_mut() {
             match this.next_extension(candidate.to_owned()) {
-                None => { candidate_vec.pop(); },
+                None => {
+                    // should be impossible for the vec pop
+                    // to not exist if last_mut succeeded
+                    this.remove_extension(candidate_vec.pop().unwrap())
+                },
                 Some(next_candidate) => {
                     *candidate = next_candidate;
                     break;
