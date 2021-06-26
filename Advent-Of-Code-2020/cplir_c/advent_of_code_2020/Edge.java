@@ -118,31 +118,107 @@ public final class Edge {
         return this.reversed;
     }
     private void getReversed() {
-        final Edge revTranslated;
-        if (this.translated != null) {
-            revTranslated = this.translated.reversed;
-            if (revTranslated != null) {
-                var indirectReversed = revTranslated.translated;
-                if (indirectReversed != null) {
-                    this.reversed = indirectReversed;
-                } else {
-                    indirectReversed = this.reversed = new Edge(
-                        revTranslated.edgeStr, revTranslated.edgeBits, ((byte) (this.edgeOrientation ^ 1)), this, revTranslated,
-                        null
-                    );
-                }
-                return indirectReversed;
+        String reversedStr = null;
+        byte reversedEdge;
+        {
+            Edge reversedObj;
+            if (this.translated != null && this.translated.reversed != null) {
+                reversedObj = this.translated.reversed;
+            } else if (this.translated != null && this.translated.rotated != null && this.translated.rotated.reversed != null) {
+                reversedObj = this.translated.rotated.reversed;
+            } else if (this.rotated != null && this.rotated.reversed != null) {
+                reversedObj = this.rotated.reversed;
+            } else if (this.rotated != null && this.rotated.translated != null && this.rotated.translated.reversed != null) {
+                reversedObj = this.rotated.translated.reversed;
+            } else {
+                reversedObj = null;
             }
-        } else {
-            revTranslated = null;
+            if (reversedObj != null) {
+                reversedStr = reversedObj.edgeStr;
+                reversedEdge = reversedObj.edgeBits;
+            } else {
+                var reversedSb = new StringBuilder(this.edgeStr);
+                reversedSb.reverse();
+                reversedStr  = reversedSb.toString();
+                reversedEdge = (short) (Integer.reverse(this.edgeBits) >>> (Integer.SIZE - 10));
+            }
         }
-        var reversedSb = new StringBuilder(this.edgeStr);
-        reversedSb.reverse();
-        var reversedEdge      = (short) (Integer.reverse(this.edgeBits) >>> (Integer.SIZE - 10));
         var reversedDirection = this.edgeOrientation;
         reversedDirection ^= 1;
-        this.reversed      = new Edge(reversedSb.toString(), reversedEdge, reversedDirection, this, revTranslated, null);
-        return this.reversed;
+        this.reversed      = new Edge(reversedStr, reversedEdge, reversedDirection, this, null, null);
+        this.distributeReversed();
+    }
+    private void distributeReversed() {
+        // set references to and from this.reversed
+        // there should be one for translated and one for rotated
+        // try to find rotated source
+        do {
+            // (node + 4) ^ 1
+            if (this.translated != null) {
+                // what am I thinking, I need to get (node + 6) ^ 1 not node + 6
+                // (node + 6) ^ 1 and node + 6
+                if (this.translated.rotated != null && this.translated.rotated.reversed != null) {
+                    this.translated.rotated.reversed.rotated = this.reversed;
+                    break;
+                    // node + 4 and node + 6
+                } else if (this.translated.reversed != null && this.translated.reversed.rotated != null) {
+                    this.translated.reversed.rotated.rotated = this.reversed;
+                    break;
+                } else { /* intentionally empty */ }
+            }
+            // node + 2
+            if (this.rotated != null) {
+                // (node + 6) ^ 1 and node + 6
+                if (this.rotated.translated != null && this.rotated.translated.reversed != null) {
+                    this.rotated.translated.reversed.rotated = this.reversed;
+                    // (node + 2) ^ 1 and node + 6
+                } else if (this.rotated.reversed != null && this.rotated.reversed.translated != null) {
+                    this.rotated.reversed.translated.rotated = this.reversed;
+                } else { /* intentionally empty */ }
+            }
+        } while (false);
+        // try to find the translated source
+        {
+            Edge translationSource;
+            // (node + 4) ^ 1 and node + 4
+            if (this.translated != null && this.translated.reversed != null) {
+                translationSource = this.translated.reversed;
+            // node + 2 and node + 4
+            } else if (this.rotated != null && this.rotated.rotated != null) {
+                translationSource = this.rotated.rotated;
+            } else {
+                translationSource = null;
+            }
+            if (translationSource != null) {
+                this.reversed.translated     = translationSource;
+                translationSource.translated = this.reversed;
+            }
+        }
+        // try to find the rotation target
+        do {
+            // node + 2
+            if (this.rotated != null) {
+                // (node + 2) ^ 1
+                if (this.rotated.reversed != null) {
+                    this.reversed.rotated = this.rotated.reversed;
+                    break;
+                    // (node + 6) ^ 1
+                } else if (this.rotated.translated != null) {
+                    // node ^ 1 and node
+                    if (this.rotated.translated.rotated != null && this.rotated.translated.rotated.rotated != null) {
+                        this.reversed.rotated = this.rotated.translated.rotated.rotated;
+                        break;
+                    }
+                }
+            // (node + 4) ^ 1
+            } else if (this.translated != null) {
+                // node + 4 and node + 6 and (node + 2) ^ 1
+                if (this.translated.reversed != null && this.translated.reversed.rotated != null
+                    && this.translated.reversed.rotated.translated != null) {
+                    this.reversed.rotated = this.translated.reversed.rotated.translated;
+                }
+            } else { /* intentionally empty */ }
+        } while (false);
     }
     public Edge translate() {
         if (this.translated != null) {
@@ -151,16 +227,6 @@ public final class Edge {
         return this.translated();
     }
     private void getTranslated() {
-        final Edge revTranslated;
-        if (this.reversed != null) {
-            revTranslated = this.reversed.translated;
-            if (revTranslated != null && revTranslated.reversed != null) {
-                this.translated = revTranslated.reversed;
-                return this.translated;
-            }
-        } else {
-            revTranslated = null;
-        }
         var translatedOrientation      = switch (this.edgeOrientation) {
             case EdgeOrientation.CLOCKWISE_RIGHT -> EdgeOrientation.COUNTERCLOCKWISE_LEFT;
             case EdgeOrientation.COUNTERCLOCKWISE_RIGHT -> EdgeOrientation.CLOCKWISE_LEFT;
@@ -176,7 +242,8 @@ public final class Edge {
         if (translatedOrientation != otherTranslatedOrientation) {
             throw new AssertionError();
         }
-        this.translated = new Edge(this.edgeStr, this.edgeBits, otherTranslatedOrientation, revTranslated, this, null);
+        this.translated = new Edge(this.edgeStr, this.edgeBits, otherTranslatedOrientation, null, this, null);
+        this.distributeTranslated();
     }
     public Edge rotate() {
         if (this.rotated != null) {
@@ -185,212 +252,18 @@ public final class Edge {
         return this.rotated;
     }
     private void getRotated() {
-        /** // formatter:off
-         *  4
-         * 1 3 -> 3412
-         *  2
-         * // formatter:on
-         * rotatedRotated == this.translated;
-         */
-        /** // formatter:off
-         *  3
-         * 4 2 -> 2341
-         *  1
-         * // formatter:on
-         * */
-        Edge rotatedTranslated = null;
-        /** // formatter:off
-         *  I
-         * Z A -> AIZE
-         *  E
-         * // formatter:on
-         * */
-        Edge rotatedReversed = null;
-        /** // formatter:off
-         *  normal
-         *   2
-         *  3 1 -> 1234
-         *   4
-         *  rotated
-         *   1
-         *  2 4 -> 4123
-         *   3
-         * // formatter:on
-         * */
-        String rotatedString     = null;
-        short  rotatedBits       = -1;
-        byte   rotatedOrientatio = -1;
+        var otherRotatedOrientation = (byte) ((this.edgeOrientation + 2) & 7);
+        this.rotated = new Edge(this.edgeStr, this.edgeBits, otherRotatedOrientation, null, null, null);
+        // look for a bridge object back to the ring
         if (this.translated != null) {
-            // trans : rotate CW or CCW twice
-            // trans : 3412
-            var trans = this.translated;
-            if (trans.translated != null && trans.translated != this) {
-                var transTrans = trans.translated;
-                trans.translated = this;
-                if (transTrans.translated != null && this.translated == null) {
-                    this.translated = transTrans.translated;
-                }
-                if (transTrans.reversed != null && this.reversed == null) {
-                    this.reversed = transTrans.reversed;
-                }
-                if (transTrans.rotated != null) {
-                    this.rotated = transTrans.rotated;
-                    return this.rotated;
-                }
-            }
-            if (trans.reversed != null) {
-                // transrevved
-                // _A
-                // E_Z -> ZAEI
-                // _I
-                var transRev = trans.reversed;
-                if (transRev.translated != this.reversed) {
-                    var transRevTrans = transRev.translated;
-                    var rev           = this.reversed;
-                    if (transRevTrans == null) {
-                        transRev.translated = rev;
-                    }
-                    if (transRevTrans.translated != null && rev.translated == null) {
-                        rev.translated = transRevTrans.translated;
-                    }
-                    if (transRevTrans.reversed != this) {
-                        var transRevTransRev = transRevTrans.reversed;
-                        transRevTrans.reversed = this;
-                        if (transRevTransRev.translated != null && this.translated == null) {
-                            this.translated = transRevTransRev.translated;
-                        }
-                        if (transRevTransRev.reversed != null && this.reversed == null) {
-                            rev = this.reversed = transRevTransRev.reversed;
-                        }
-                        if (transRevTransRev.rotated != null) {
-                            this.rotated = transRevTransRev.rotated;
-                            return this.rotated;
-                        }
-                    }
-                    if (transRevTrans.rotated != null) {
-                        rotatedReversed = transRevTrans.rotated;
-                    }
-                }
-                if (transRev.reversed != trans) {
-                    var transRevRev = transRev.reversed;
-                    transRev.reversed = trans;
-                    if (trans.reversed == null && transRevRev.reversed != null) {
-                        trans.reversed = transRevRev.reversed;
-                    }
-                    if (trans.rotated == null && transRevRev.rotated != null) {
-                        trans.rotated = transRevRev.rotated;
-                    }
-                    if (trans.translated != this) {
-                        trans.translated = this;
-                    }
-                }
-                if (transRev.rotated != null) {
-                    // transrevrot
-                    // _Z
-                    // A_I -> IZAE
-                    // _E
-                    var transRevRot = transRev.rotated;
-                    if (transRevRot.translated != null) {
-                        // transrevrot
-                        // _Z
-                        // A_I -> IZAE
-                        // _E
-                        // transrevrottrans
-                        // _E
-                        // I_A
-                        // _Z
-                        var transRevRotTrans = transRevRot.translated;
-                        rotatedReversed = transRevRotTrans;
-                    }
-                }
-            }
-            if (trans.rotated != null) {
-                /** // formatter:off
-                 * normal
-                 *  2
-                 * 3 1 -> 1234
-                 *  4
-                 * translated
-                 *  4
-                 * 1 3 -> 3412
-                 *  2
-                 * translated & rotated
-                 *  3
-                 * 4 2 -> 2341
-                 *  1
-                 */// formatter:on
-                var transrotat = trans.rotated;
-                if (transrotat.translated != null) {
-                    /** // formatter:off
-                     * translated & rotated
-                     *  3
-                     * 4 2 -> 2341
-                     *  1
-                     * translated & rotated & translated == rotated
-                     *  1
-                     * 2 4 -> 4123
-                     *  3
-                     *  // formatter:on
-                     */
-                    this.rotated = transrotat.translated;
-                    return this.rotated;
-                }
-                if (transrotat.reversed != null) {
-                    /** // formatter:off
-                     * translated & rotated
-                     *  3
-                     * 4 2 -> 2341
-                     *  1
-                     * translated & rotated & reversed
-                     *  E
-                     * A Z -> ZEAI
-                     *  I
-                     *  // formatter:on
-                     */
-                    var transrotatrevs = transrotat.reversed;
-                    if (transrotatrevs.translated != null) {
-                        /** // formatter:off
-                         * translated & rotated & reversed
-                         *  E
-                         * A Z -> ZEAI
-                         *  I
-                         * translated & rotated & reversed & translated
-                         *  I
-                         * Z A -> AIZE
-                         *  E
-                         * // formatter:on
-                         */
-                        rotatedReversed = transrotatrevs.translated;
-                        if (rotatedReversed.reversed != null) {
-                            /** // formatter:off
-                             * translated & rotated & reversed
-                             *  E
-                             * A Z -> ZEAI
-                             *  I
-                             * translated & rotated & reversed & translated
-                             *  I
-                             * Z A -> AIZE
-                             *  E
-                             * // formatter:on
-                             */
-                            this.rotated = rotatedReversed.reversed;
-                            if (this.rotated.reversed == null) {
-                                this.rotated.reversed = rotatedReversed;
-                            }
-                            return this.rotated;
-                        }
-                    }
-                }
-            }
+            this.rotated.rotated = this.translated;
+        } else if (this.reversed != null && this.reversed.rotated != null) {
+            this.rotated.reversed = this.reversed.rotated;
+        } else {
+            // if there is no bridge object, make one
+            getTranslated();
+            this.rotated.rotated = this.translated;
         }
-        if (this.reversed != null) {
-            var revved = this.reversed;
-            if (revved.translated != null) {
-
-            }
-            if (revved.reversed != null) {
-
-            }
-        }
+        this.distributeRotated();
     }
 }
