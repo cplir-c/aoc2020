@@ -3,10 +3,13 @@ use std::borrow::BorrowMut;
 use std::cell::Cell;
 use std::cell::RefCell;
 use std::collections::HashSet;
+use std::fmt;
+use std::fmt::Debug;
+use std::fmt::Formatter;
 use std::marker::PhantomData;
 
 use super::backtracking::BFSProblem;
-use super::DebugWrapper;
+use super::DebugStrWrapper;
 use super::EdgeMap;
 use super::EdgeReference;
 use super::EdgePlacement;
@@ -15,11 +18,11 @@ use super::Side;
 use super::Tile;
 use super::tile_structures;
 use super::TilePlacement;
+use super::wrappers::SetWrapper;
 
 mod borrow_owning;
 
 type TilePlacementMap<'a, 'b, S> = PlacementMap<'b, TilePlacement<'a, S>>;
-#[derive(Debug)]
 pub struct TileProblem<'a, 'b, S: Borrow<str>> {
     tiles: &'a [Tile<'a, S>],
     edge_map: EdgeMap<'a, S>,
@@ -31,6 +34,26 @@ pub struct TileProblem<'a, 'b, S: Borrow<str>> {
 pub enum TileCandidate<'a, 'b, S: Borrow<str>> {
     RootTiles(Cell<&'b [Tile<'a, S>]>),
     LeafTiles(Cell<&'b [EdgeReference<'a, S>]>),
+}
+impl<'a, 'b, S: Borrow<str>> Debug for &TileProblem<'a, 'b, S> {
+    fn fmt(&self, fmtr: &mut Formatter) -> fmt::Result {
+        let placements_ref = self.placements.borrow();
+        let placements = unsafe {
+            std::mem::transmute::<&TilePlacementMap<S>, &TilePlacementMap<DebugStrWrapper<S>>>(placements_ref.borrow())
+        };
+        let placed_ids_ref = self.placed_tile_ids.borrow();
+        let placed_ids: &HashSet<u16> = placed_ids_ref.borrow();
+        if fmtr.alternate() {
+            write!(fmtr, "TileProblem {{
+                placed_tile_ids: {},
+                placements: {}
+            }}", SetWrapper::new(placed_ids)
+            , placements.as_list_fmt())
+        } else {
+            write!(fmtr, "TileProblem {{ placed_tile_ids: {}, placements: {} }}", SetWrapper::new(placed_ids)
+            , placements.as_list_fmt())
+        }
+    }
 }
 impl<'a, 'b, S: Borrow<str>> TileCandidate<'a, 'b, S> {
     fn is_empty(&self) -> bool {
@@ -157,11 +180,10 @@ impl<'a, 'b, S: Borrow<str>> BFSProblem<'b> for TileProblem<'a, 'b, S> {
         !self.is_solution(candidate) && candidate.is_empty()
     }
     fn is_solution(&self, candidate: &Self::Candidate) -> bool {
-        
         println!("tile problem state: {:#?}, candidate: {:?}", unsafe {
-            std::mem::transmute::<&TileProblem<S>, &TileProblem<DebugWrapper<S>>>(self)
+            std::mem::transmute::<&TileProblem<S>, &TileProblem<DebugStrWrapper<S>>>(self)
         }, unsafe {
-            std::mem::transmute::<&TileCandidate<S>, &TileCandidate<DebugWrapper<S>>>(candidate)
+            std::mem::transmute::<&TileCandidate<S>, &TileCandidate<DebugStrWrapper<S>>>(candidate)
         });
         self.placements.borrow().len() == self.tiles.len()
     }

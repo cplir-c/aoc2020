@@ -1,7 +1,7 @@
 
 use std::borrow::Borrow;
 use std::fmt;
-use std::fmt::Debug;
+
 
 mod tile_structures;
 use tile_structures::*;
@@ -13,6 +13,9 @@ mod backtracking;
 use backtracking::*;
 mod tile_problem;
 use tile_problem::*;
+mod wrappers;
+pub use wrappers::DebugStrWrapper;
+
 
 fn gather_errors<T>(accum: Result<Vec<T>, String>, item: Result<T, String>) -> Result<Vec<T>, String> {
     match (item, accum) {
@@ -38,20 +41,7 @@ impl<S: Borrow<str>, R> ReturnAssembler<S, R> {
     }
 }
 
-#[repr(transparent)]
-pub struct DebugWrapper<S: Borrow<str>>{
-    s: S
-}
-impl<S: Borrow<str>> Debug for DebugWrapper<S> {
-    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
-        out.write_str(self.borrow())
-    }
-}
-impl<S: Borrow<str>> Borrow<str> for DebugWrapper<S> {
-    fn borrow(&self) -> &str {
-        self.s.borrow()
-    }
-}
+
 
 fn get_corner_product<S: Borrow<str>>(map_edge_length: u16, placements: &[TilePlacement<S>]) -> u64 {
     println!("map placements:");
@@ -60,7 +50,7 @@ fn get_corner_product<S: Borrow<str>>(map_edge_length: u16, placements: &[TilePl
     }
     println!("Map pieced together:\n{}", MapDisplay(unsafe {
         // safe because DebugWrapper<S> has the same representation as S
-        std::mem::transmute::<&[TilePlacement<S>], &[TilePlacement<DebugWrapper<S>>]>(placements)
+        std::mem::transmute::<&[TilePlacement<S>], &[TilePlacement<DebugStrWrapper<S>>]>(placements)
     }));
     let map_edge_length = map_edge_length as usize;
     let tile_count = map_edge_length * map_edge_length;

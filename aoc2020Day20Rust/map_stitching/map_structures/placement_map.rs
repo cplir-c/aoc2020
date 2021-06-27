@@ -1,8 +1,14 @@
 
+use std::fmt;
+use std::fmt::Display;
+use std::fmt::Debug;
+use std::fmt::Formatter;
+use std::iter::IntoIterator;
 use std::ops::Index;
 use std::ops::IndexMut;
 
 use super::adjacent_placements::AdjacentPlacements;
+use super::super::wrappers::ListWrapper;
 use super::placement_position::PlacementPosition;
 use super::placement_position::PlacementPositionIterator;
 
@@ -33,6 +39,12 @@ impl<'a, T:?Sized> PlacementMap<'a, T> {
     }
     pub fn clear(&mut self) {
         self.positions = PlacementPositionIterator::new(self.positions.side_length());
+    }
+}
+
+impl<'a, T:?Sized + Display> PlacementMap<'a, T> {
+    pub fn as_list_fmt(&'a self) -> impl Display + 'a {
+        ListWrapper::new(self)
     }
 }
 

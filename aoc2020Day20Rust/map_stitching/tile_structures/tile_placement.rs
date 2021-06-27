@@ -2,7 +2,9 @@
 use std::borrow::Borrow;
 use std::clone::Clone;
 use std::fmt;
+use std::fmt::Debug;
 use std::fmt::Display;
+use std::fmt::Formatter;
 use std::iter::IntoIterator;
 use std::ops::Index;
 
@@ -21,7 +23,7 @@ use super::edge_placement::EdgeReference;
 use super::edge_placement::PlacementEdgePlacementIterator;
 use super::edge_placement::PlacementEdgeReferenceIterator;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct TilePlacement<'a, S: Borrow<str>> {
     pub orientation: TileOrientation,
     pub tile: &'a Tile<'a, S>
@@ -42,7 +44,7 @@ pub struct TilePlacementIterator<'a, S: Borrow<str>> {
     orientation_iter: TileOrientationIterator
 }
 
-impl<'a, 'b, S: Borrow<str>> IntoIterator for &'a Tile<'a, S> {
+impl<'a, S: Borrow<str>> IntoIterator for &'a Tile<'a, S> {
     type Item = TilePlacement<'a, S>;
     type IntoIter = TilePlacementIterator<'a, S>;
     fn into_iter(self) -> <Self as IntoIterator>::IntoIter {
@@ -53,7 +55,7 @@ impl<'a, 'b, S: Borrow<str>> IntoIterator for &'a Tile<'a, S> {
     }
 }
 
-impl<'a, 'b, S: Borrow<str>> Iterator for TilePlacementIterator<'a, S> {
+impl<'a, S: Borrow<str>> Iterator for TilePlacementIterator<'a, S> {
     type Item = TilePlacement<'a, S>;
     fn next(&mut self) -> Option<<Self as Iterator>::Item> {
         self.orientation_iter.next().map(|orientation|{
@@ -65,50 +67,30 @@ impl<'a, 'b, S: Borrow<str>> Iterator for TilePlacementIterator<'a, S> {
     }
 }
 
-impl<'a, 'b, S: Borrow<str>> Display for TilePlacement<'a, S> {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        /* Fw -> Forward
-         * Bw -> Backward
-         * 
-         * rotation
-         * Fw,Top -> No copies
-         * 12
-         * 34
-         * 
-         * Bw,Top -> read rows backward: right to left, top down
-         * 21
-         * 43
-         * 
-         * Fw, Right -> read columns: top down, right to left
-         * 24
-         * 13
-         * 
-         * Bw, Right -> read columns: top down, left to right
-         * 13
-         * 24
-         * 
-         * Fw, Bottom -> read rows backward: right to left, bottom up
-         * 43
-         * 21
-         * 
-         * Bw, Bottom -> read rows: left to right, bottom up
-         * 34
-         * 12
-         * 
-         * Fw, Left -> read columns: bottom up, left to right
-         * 31
-         * 42
-         * 
-         * Bw, Left -> read columns: bottom up, right to left
-         * 42
-         * 31
-         */
+impl<'a, S: Borrow<str>> Display for TilePlacement<'a, S> {
+    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
         let tile_body = self.tile.body_string;
         self.orientation.format(formatter, tile_body)
     }
 }
+impl<'a, S: Borrow<str>> Debug for TilePlacement<'a, S> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        fmt.write_str("TilePlacement {")?;
+        if fmt.alternate() {
+            write!(fmt, "\n    orientation: {},
+                    tile: ", self.orientation);
+            self.orientation.format(fmt, self.tile.body_string)?;
+            fmt.write_str("\n")?;
+        } else {
+            write!(fmt, " orientation: {}, tile: ", self.orientation)?;
+            self.orientation.format(fmt, self.tile.body_string)?;
+            fmt.write_str(" ")?;
+        }
+        fmt.write_str("}")
+    }
+}
 
-impl<'a, 'b, S: Borrow<str>> Index<Side> for TilePlacement<'a, S> {
+impl<'a, S: Borrow<str>> Index<Side> for TilePlacement<'a, S> {
     type Output = EdgeBits;
     fn index(&self, index: Side) -> &Self::Output {
         /* Fw -> Forward
