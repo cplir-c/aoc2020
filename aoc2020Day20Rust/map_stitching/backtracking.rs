@@ -39,9 +39,10 @@ pub trait BFSProblem<'a> {
     }
     fn vec_backtrack_with_capacity(&'a self, capacity: usize) -> Option<Self::Candidate> {
         let root_candidate = self.root_candidate();
+        println!("rooted search");
         let mut candidate_vec = Vec::with_capacity(capacity);
         candidate_vec.push(root_candidate);
-        
+        println!("pushed search root");
         loop {
             // descended to this one
             let candidate = match candidate_vec.last() {
@@ -49,15 +50,22 @@ pub trait BFSProblem<'a> {
                 None => { return None; },
                 Some(candidate) => candidate.to_owned()
             };
+            println!("copied top candidate");
             
-            if self.is_impossible(&candidate) {
-                go_backtrack(self, &mut candidate_vec, candidate.to_owned());
-            } else if self.is_solution(&candidate) {
+            if self.is_solution(&candidate) {
+                println!("candidate is the solution!");
                 return Some(candidate);
+            } else if self.is_impossible(&candidate) {
+                println!("candidate is impossible, backtracking");
+                go_backtrack(self, &mut candidate_vec, candidate.to_owned());
             }
             
-            if let Some(new_candidate) = self.first_extension(candidate) {
+            if let Some(new_candidate) = self.first_extension(candidate.to_owned()) {
+                println!("added new candidate, new depth: {}", candidate_vec.len());
                 candidate_vec.push(new_candidate);
+            } else {
+                println!("failed to extend candidate, backtracking");
+                go_backtrack(self, &mut candidate_vec, candidate.to_owned());
             }
         }
     }
@@ -71,22 +79,27 @@ fn go_backtrack<'a, 'b, S: ?Sized, C: ToOwned<Owned=C>>
     // if this candidate is impossible, try the next one
     let possible_candidate = this.next_extension(candidate.to_owned());
     if let Some(candidate) = possible_candidate {
+        print!("found sibiling candidate to impossible candidate, ");
         if let Some(vec_spot) = candidate_vec.last_mut() {
+            println!("replaced candidate");
             *vec_spot = candidate;
         } else {
             panic!("Shouldn't have been empty if there was an impossible candidate to get here")
         }
     } else {
+        println!("impossible candidate has no sibilings remaining");
         while let Some(candidate) = candidate_vec.last_mut() {
             match this.next_extension(candidate.to_owned()) {
                 None => {
                     // should be impossible for the vec pop
                     // to not exist if last_mut succeeded
-                    this.remove_extension(candidate_vec.pop().unwrap())
+                    this.remove_extension(candidate_vec.pop().unwrap());
+                    println!("popped candidate, new depth: {}", candidate_vec.len() - 1)
                 },
                 Some(next_candidate) => {
+                    println!("this candidate has a sibling, replacing candidate");
                     *candidate = next_candidate;
-                    break;
+                    break
                 }
             };
         }

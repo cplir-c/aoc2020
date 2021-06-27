@@ -6,19 +6,20 @@ use std::collections::HashSet;
 use std::marker::PhantomData;
 
 use super::backtracking::BFSProblem;
-use super::tile_structures;
+use super::DebugWrapper;
 use super::EdgeMap;
 use super::EdgeReference;
 use super::EdgePlacement;
 use super::PlacementMap;
 use super::Side;
 use super::Tile;
+use super::tile_structures;
 use super::TilePlacement;
 
 mod borrow_owning;
 
 type TilePlacementMap<'a, 'b, S> = PlacementMap<'b, TilePlacement<'a, S>>;
-
+#[derive(Debug)]
 pub struct TileProblem<'a, 'b, S: Borrow<str>> {
     tiles: &'a [Tile<'a, S>],
     edge_map: EdgeMap<'a, S>,
@@ -26,7 +27,7 @@ pub struct TileProblem<'a, 'b, S: Borrow<str>> {
     placements: RefCell<TilePlacementMap<'a, 'b, S>>,
     phantom: PhantomData<&'b TileCandidate<'a, 'b, S>>,
 }
-
+#[derive(Debug)]
 pub enum TileCandidate<'a, 'b, S: Borrow<str>> {
     RootTiles(Cell<&'b [Tile<'a, S>]>),
     LeafTiles(Cell<&'b [EdgeReference<'a, S>]>),
@@ -155,7 +156,13 @@ impl<'a, 'b, S: Borrow<str>> BFSProblem<'b> for TileProblem<'a, 'b, S> {
     fn is_impossible(&self, candidate: &Self::Candidate) -> bool {
         !self.is_solution(candidate) && candidate.is_empty()
     }
-    fn is_solution(&self, _candidate: &Self::Candidate) -> bool {
+    fn is_solution(&self, candidate: &Self::Candidate) -> bool {
+        
+        println!("tile problem state: {:#?}, candidate: {:?}", unsafe {
+            std::mem::transmute::<&TileProblem<S>, &TileProblem<DebugWrapper<S>>>(self)
+        }, unsafe {
+            std::mem::transmute::<&TileCandidate<S>, &TileCandidate<DebugWrapper<S>>>(candidate)
+        });
         self.placements.borrow().len() == self.tiles.len()
     }
     fn first_extension(
@@ -163,8 +170,9 @@ impl<'a, 'b, S: Borrow<str>> BFSProblem<'b> for TileProblem<'a, 'b, S> {
         _candidate: <Self as BFSProblem<'b>>::Candidate,
     ) -> Option<<Self as BFSProblem<'b>>::Candidate> {
         let (left_bits, up_bits) = {
-            let placements_ref = self.placements.borrow();
-            if let Some(position) = placements_ref.last_position() {
+            let opt_pos = {self.placements.borrow_mut().peek_pos()};
+            if let Some(position) = opt_pos {
+                let placements_ref = self.placements.borrow();
                 let nearby = placements_ref.get_adjacents(position);
                 (nearby.left().map(|l| l[Side::Right]),
                    nearby.up().map(|u| u[Side::Bottom]))
@@ -239,6 +247,6 @@ impl<'a, 'b, S: Borrow<str>> BFSProblem<'b> for TileProblem<'a, 'b, S> {
     fn remove_extension(&'b self, _candidate: <Self as BFSProblem<'b>>::Candidate) {
         // only called when there's something to remove
         let placement = self.placements.borrow_mut().pop().unwrap();
-        assert!(self.placed_tile_ids.borrow_mut().remove(&placement.tile.tile_id));
+        assert!(self.placed_tile_ids.borrow_mut().remove(&placement.tile.tile_id), "removing tile id: {}, tile ids: {:#?}", placement.tile.tile_id, self.placed_tile_ids.borrow());
     }
 }

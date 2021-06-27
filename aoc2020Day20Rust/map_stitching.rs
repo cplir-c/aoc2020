@@ -39,7 +39,7 @@ impl<S: Borrow<str>, R> ReturnAssembler<S, R> {
 }
 
 #[repr(transparent)]
-struct DebugWrapper<S: Borrow<str>>{
+pub struct DebugWrapper<S: Borrow<str>>{
     s: S
 }
 impl<S: Borrow<str>> Debug for DebugWrapper<S> {
@@ -108,15 +108,15 @@ pub fn find_corner_id_product<S, R>(
     }
 }
 
-fn assemble_return<'a, S: Borrow<str>, R>
+fn assemble_return<S: Borrow<str>, R>
   ( edge_length: u16
-  , placed: Box<[TilePlacement<'a, S>]>
+  , placed: &[TilePlacement<S>]
   , return_assembler: ReturnAssembler<S, R>
   ) -> R {
     println!("placement dimensions: {} long, {} across", placed.len(), edge_length);
     {
         let fun: &fn(u16, &[TilePlacement<S>]) -> R = return_assembler.borrow();
-        fun(edge_length, &placed[..])
+        fun(edge_length, placed)
     }
 }
 
@@ -127,7 +127,7 @@ fn piece_together_map<'a, S: Borrow<str>, R>
     let tile_count: usize = all_tiles.len();
     println!("tile count {:?}", tile_count);
     let edge_length = isqrt(tile_count) as u16;
-    print!("tile count: {}, map side length: {}", tile_count, edge_length);
+    println!("tile count: {}, map side length: {}", tile_count, edge_length);
     
     
     let tile_placements: Option<Box<[TilePlacement<'a, S>]>> = {
@@ -138,7 +138,7 @@ fn piece_together_map<'a, S: Borrow<str>, R>
     Some(
         tile_placements
             .map(|placements|{
-                assemble_return(edge_length, placements, return_assembler)
+                assemble_return(edge_length, &placements, return_assembler)
             })
             .expect("failed to collect tiles into placeements, what a letdown")
     )

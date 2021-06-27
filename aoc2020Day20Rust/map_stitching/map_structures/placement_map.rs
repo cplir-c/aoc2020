@@ -8,7 +8,7 @@ use super::placement_position::PlacementPositionIterator;
 
 type PlacementArray<'a, T> = Box<[Option<&'a T>]>;
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct PlacementMap<'a, T:?Sized> {
     placements: PlacementArray<'a, T>,
     positions: PlacementPositionIterator,

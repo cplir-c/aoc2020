@@ -102,14 +102,14 @@ impl PartialOrd for PlacementPosition {
 
 /// The shell enumeration of N X N where N = {0, 1, 2, ...}
 /// https://oeis.org/A319514
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct PlacementPositionIterator {
     side_length: u16,
     previous: Option<PlacementPosition>,
     mode: Mode
 }
 
-#[derive(Eq, PartialEq, Copy, Clone)]
+#[derive(Eq, PartialEq, Copy, Clone, Debug)]
 enum Mode {
     Left, Right, Up, Down
 }

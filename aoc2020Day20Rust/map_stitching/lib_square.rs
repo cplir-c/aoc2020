@@ -14,11 +14,12 @@ use unicode_segmentation::UnicodeSegmentation;
 
 pub fn invert_uint_function<U, F>(target: U, f: F) -> U
   where U: Sub<Output=U> + Add<Output=U> + Shr<Output=U>
-           + From<u8> + Ord + Copy
+           + From<u8> + Ord + Copy + Display
   , F: Fn(U) -> U {
     let one = U::from(1);
     let mut upper = target >> one;
     let mut lower = U::from(0);
+    
     while upper - lower > one {
         let middle_bound = (upper + lower) >> one;
         let middle_attempt = f(middle_bound);
@@ -33,7 +34,7 @@ pub fn invert_uint_function<U, F>(target: U, f: F) -> U
 
 pub fn isqrt<U>(area: U) -> U
   where U: Mul<Output=U> + Sub<Output=U> + Add<Output=U>
-           + Shr<Output=U> + From<u8> + Ord + Copy {
+           + Shr<Output=U> + From<u8> + Ord + Copy + Display {
     invert_uint_function(area, |x|{ x * x })
 }
 
