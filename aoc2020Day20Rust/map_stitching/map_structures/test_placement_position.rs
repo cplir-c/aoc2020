@@ -2,7 +2,7 @@
 use super::{PlacementPosition, PlacementPositionIterator};
 
 #[test]
-fn test_iterator() {
+fn test_forward_iterator() {
     let it = PlacementPositionIterator::new(3);
     let good_result = [
         PlacementPosition {row: 0, col: 0},

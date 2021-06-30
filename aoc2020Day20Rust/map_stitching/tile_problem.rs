@@ -1,3 +1,4 @@
+
 use std::borrow::Borrow;
 use std::borrow::BorrowMut;
 use std::cell::Cell;
@@ -19,7 +20,9 @@ use super::tile_structures;
 use super::TilePlacement;
 use super::wrappers::SetWrapper;
 
-mod borrow_owning;
+mod tile_candidate;
+use tile_candidate::TileCandidate;
+mod adjacent_placements;
 
 type TilePlacementMap<'a, 'b, S> = PlacementMap<'b, TilePlacement<'a, S>>;
 pub struct TileProblem<'a, 'b, S: Borrow<str>> {
@@ -30,10 +33,6 @@ pub struct TileProblem<'a, 'b, S: Borrow<str>> {
     phantom: PhantomData<&'b TileCandidate<'a, 'b, S>>,
 }
 
-pub enum TileCandidate<'a, 'b, S: Borrow<str>> {
-    RootTiles(Cell<&'b [Tile<'a, S>]>),
-    LeafTiles(Cell<&'b [EdgeReference<'a, S>]>),
-}
 impl<'a, 'b, S: Borrow<str>> Debug for &TileProblem<'a, 'b, S> {
     fn fmt(&self, fmtr: &mut Formatter) -> fmt::Result {
         let placements_ref = self.placements.borrow();
@@ -51,109 +50,7 @@ impl<'a, 'b, S: Borrow<str>> Debug for &TileProblem<'a, 'b, S> {
         }
     }
 }
-impl<'a, 'b, S: Borrow<str>> Debug for TileCandidate<'a, 'b, S> {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        fn help_debug(fmt: &mut Formatter, variant: &str, d: impl Debug) -> fmt::Result {
-            if fmt.alternate() {
-                write!(fmt, "TileCandidate::{}(
-                    {:#?}
-                )", variant, d)
-            } else {
-                write!(fmt, "TileCandidate::{}({:?})", variant, d)
-            }
-        }
-        match self {
-            TileCandidate::RootTiles(tiles) => {
-                help_debug(fmt, "RootTiles", tiles)
-            },
-            TileCandidate::LeafTiles(places) => {
-                help_debug(fmt, "LeafTiles", places)
-            }
-        }
-        
-    }
-}
-impl<'a, 'b, S: Borrow<str>> TileCandidate<'a, 'b, S> {
-    
-    fn is_empty(&self) -> bool {
-        match self {
-            TileCandidate::RootTiles(tiles) => tiles.get().is_empty(),
-            TileCandidate::LeafTiles(places) => places.get().as_ref().is_empty(),
-        }
-    }
-    fn next_extension(&'_ self, problem: &'b TileProblem<'a, 'b, S>) -> Option<&'b TilePlacement<'a, S>> { 
-        match self {
-            TileCandidate::RootTiles(tiles) => tiles.get().split_last().and_then(|(last, rest)| {
-                tiles.set(rest);
-                let new_root = tile_structures::lookup_tile(&last, &problem.edge_map).map(|edge_ref| &edge_ref.placement);
-                if let Some(root) = new_root {
-                    problem.placements.borrow_mut().replace_last(root);
-                }
-                new_root
-            }),
-            TileCandidate::LeafTiles(tile_placements) => {
-                let mut placements_slice = tile_placements.get();
-                let (left_bits, up_bits) = {
-                    let placements_ref = problem.placements.borrow();
-                    if let Some(position) = placements_ref.last_position() {
-                        let nearby = placements_ref.get_adjacents(position);
-                        (nearby.left().map(|l| l[Side::Right]),
-                           nearby.up().map(|u| u[Side::Bottom]))
-                    } else {
-                        return None;
-                    }
-                };
-                loop {
-                    let placement = if let Some((first, slice_rest)) = placements_slice.split_first() {
-                        placements_slice = slice_rest;
-                        &first.placement
-                    } else {
-                        tile_placements.set(&[]);
-                        return None;
-                    };
-                    // filter by adjacent tiles
-                    if let Some(l_bits) = left_bits {
-                        if l_bits != placement[Side::Left] {
-                            continue;
-                        }
-                    }
-                    if let Some(u_bits) = up_bits {
-                        if u_bits != placement[Side::Top] {
-                            continue;
-                        }
-                    }
-                    // filter by unplaced tile ids
-                    let tile_id = placement.tile.tile_id;
-                    if problem.placed_tile_ids.borrow().contains(&tile_id) {
-                        continue;
-                    }
-                    // place tile
-                    // replace old placed tile
-                    let opt_old_placement = problem.placements.borrow_mut().replace_last(placement);
-                    { // remove old placed tile's tile id
-                        let mut mut_tile_ids = problem.placed_tile_ids.borrow_mut();
-                        if let Some(old_placement) = opt_old_placement {
-                            mut_tile_ids.remove(&old_placement.tile.tile_id);
-                        }
-                        // add new placed tile's tile id
-                        assert!(mut_tile_ids.insert(tile_id));
-                    }
-                    tile_placements.set(placements_slice);
-                    return Some(placement);
-                }
-            }
-        }
-    }
-}
-impl<'a, 'b, S: Borrow<str>> Clone for TileCandidate<'a, 'b, S> {
-    fn clone(&self) -> Self {
-        match self {
-            TileCandidate::RootTiles(tiles) => TileCandidate::RootTiles(Cell::new(tiles.get())),
-            TileCandidate::LeafTiles(places) => TileCandidate::LeafTiles(Cell::new(places.get())),
-        }
-    }
-}
-//impl<'a, 'b, S: Borrow<str>>
+
 
 impl<'a, 'b, S: Borrow<str>> TileProblem<'a, 'b, S> {
     pub fn new(tiles: &'a [Tile<'a, S>], side_length: u16) -> TileProblem<'a, 'b, S> {
@@ -172,6 +69,52 @@ impl<'a, 'b, S: Borrow<str>> TileProblem<'a, 'b, S> {
     }
     pub fn as_placements(&'b self) -> Option<Box<[TilePlacement<'a, S>]>> {
         self.placements.borrow_mut().as_box()
+    }
+    fn find_tile_placement<G, P, R, PlacementPosition>(&'b self
+                         , pos_to_fill: PlacementPosition
+                         , get_placement_slice: G
+                         , package_return: P
+                ) -> Option<R>
+      where G: FnOnce(Option<u16>, Option<u16>) -> Option<&'b [EdgeReference<'a, S>]>
+          , P: FnOnce(&'b TilePlacement<'a, S>, &'b [EdgeReference<'a, S>]) -> R {
+        let (left_bits, up_bits) = {
+            let opt_pos = self.placements.borrow().last_position(); // different opt_pos source
+            if let Some(position) = opt_pos {
+                let placements_ref = self.placements.borrow();
+                let nearby = placements_ref.get_adjacents(position);
+                (nearby.left().map(|l| l[Side::Right]),
+                   nearby.up().map(|u| u[Side::Bottom]))
+            } else {
+                return None;
+            }
+        };
+        // different placements_slice source
+        let mut placements_slice = get_placement_slice(left_bits, up_bits)?;
+        loop {
+            let placement = if let Some((first, slice_rest)) = placements_slice.split_first() {
+                placements_slice = slice_rest;
+                &first.placement
+            } else {
+                return None;
+            };
+            // filter by adjacent tiles
+            if let Some(l_bits) = left_bits {
+                if l_bits != placement[Side::Left] {
+                    continue;
+                }
+            }
+            if let Some(u_bits) = up_bits {
+                if u_bits != placement[Side::Top] {
+                    continue;
+                }
+            }
+            // filter by unplaced tile ids
+            let tile_id = placement.tile.tile_id;
+            if self.placed_tile_ids.borrow().contains(&tile_id) {
+                continue;
+            }
+            return Some(package_return(placement, placements_slice));
+        }
     }
 }
 
@@ -207,18 +150,8 @@ impl<'a, 'b, S: Borrow<str>> BFSProblem<'b> for TileProblem<'a, 'b, S> {
         &'b self,
         _candidate: <Self as BFSProblem<'b>>::Candidate,
     ) -> Option<<Self as BFSProblem<'b>>::Candidate> {
-        let (left_bits, up_bits) = {
-            let opt_pos = {self.placements.borrow_mut().peek_pos()};
-            if let Some(position) = opt_pos {
-                let placements_ref = self.placements.borrow();
-                let nearby = placements_ref.get_adjacents(position);
-                (nearby.left().map(|l| l[Side::Right]),
-                   nearby.up().map(|u| u[Side::Bottom]))
-            } else {
-                return None;
-            }
-        };
-        let mut placements_slice = {
+        let opt_pos = self.placements.borrow_mut().peek_pos();
+        let get_placement_slice = |left_bits, up_bits| {
             let edge_placement = if let Some(left) = left_bits {
                 EdgePlacement {
                     side: Side::Left,
@@ -233,48 +166,57 @@ impl<'a, 'b, S: Borrow<str>> BFSProblem<'b> for TileProblem<'a, 'b, S> {
                 panic!("failed to get nearby placed tiles on finding next layer")
             };
             if let Some(placement_vec) = self.edge_map.get(&edge_placement) {
-                placement_vec.as_slice()
+                Some(placement_vec.as_slice())
             } else {
-                return None;
+                None
             }
         };
-        loop {
-            let placement = if let Some((first, slice_rest)) = placements_slice.split_first() {
-                placements_slice = slice_rest;
-                &first.placement
-            } else {
-                return None;
-            };
-            // filter by adjacent tiles
-            if let Some(l_bits) = left_bits {
-                if l_bits != placement[Side::Left] {
-                    continue;
-                }
-            }
-            if let Some(u_bits) = up_bits {
-                if u_bits != placement[Side::Top] {
-                    continue;
-                }
-            }
-            // filter by unplaced tile ids
-            let tile_id = placement.tile.tile_id;
-            if self.placed_tile_ids.borrow().contains(&tile_id) {
-                continue;
-            }
+        let package_return = |placement: &'b TilePlacement<'a, S>, placements_slice|{
             // place tile
-            { // remove old placed tile's tile id
-                let mut mut_tile_ids = self.placed_tile_ids.borrow_mut();
-                // add new placed tile's tile id
-                assert!(mut_tile_ids.insert(tile_id));
-            }
-            return Some(TileCandidate::LeafTiles(Cell::new(placements_slice)));
-        }
+            let mut mut_tile_ids = self.placed_tile_ids.borrow_mut();
+            // add new placed tile's tile id
+            let tile_id = placement.tile.tile_id;
+            assert!(mut_tile_ids.insert(tile_id));
+            TileCandidate::LeafTiles(Cell::new(placements_slice))
+        };
+        self.find_tile_placement(opt_pos, get_placement_slice, package_return)
     }
     fn next_extension(
         &'b self,
         candidate: <Self as BFSProblem<'b>>::Candidate,
     ) -> Option<<Self as BFSProblem<'b>>::Candidate> {
-        let next: Option<&'b TilePlacement<'a, S>> = candidate.next_extension(&self);
+        let next: Option<&'b TilePlacement<'a, S>> = match candidate {
+            TileCandidate::RootTiles(ref tiles) => {
+                let (last, rest) = tiles.get().split_last()?;
+                tiles.set(rest);
+                let new_root = tile_structures::lookup_tile(&last, &self.edge_map).map(|edge_ref| &edge_ref.placement);
+                if let Some(root) = new_root {
+                    self.placements.borrow_mut().replace_last(root);
+                }
+                new_root
+            },
+            TileCandidate::LeafTiles(ref tile_placements) => {
+                let opt_pos = self.placements.borrow().last_position();
+                let get_placement_slice = |_, _| Some(tile_placements.get());
+                let package_return = |placement, placements_slice|{
+                    // place tile
+                    // replace old placed tile
+                    let opt_old_placement = self.placements.borrow_mut().replace_last(placement);
+                    { // remove old placed tile's tile id
+                        let mut mut_tile_ids = self.placed_tile_ids.borrow_mut();
+                        if let Some(old_placement) = opt_old_placement {
+                            mut_tile_ids.remove(&old_placement.tile.tile_id);
+                        }
+                        // add new placed tile's tile id
+                        let tile_id = placement.tile.tile_id;
+                        assert!(mut_tile_ids.insert(tile_id));
+                    }
+                    tile_placements.set(placements_slice);
+                    placement
+                };
+                self.find_tile_placement(opt_pos, get_placement_slice, package_return)
+            }
+        };
         next.map(|_new_placement| {
             candidate
         })
