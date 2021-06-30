@@ -1,4 +1,7 @@
 use std::borrow::Borrow;
+use std::fmt;
+use std::fmt::Display;
+use std::fmt::Formatter;
 use std::ops::Index;
 
 use super::super::lib_square::reverse_str;
@@ -37,6 +40,11 @@ impl<T: Borrow<str>> DirectedEdge<T> {
 impl<T: Borrow<str>> From<DirectedEdge<T>> for EdgeBits {
     fn from(t: DirectedEdge<T>) -> Self {
         t.bits
+    }
+}
+impl<T: Borrow<str>> Display for DirectedEdge<T> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        write!(fmt, "edge {}: {}", self.bits, self.string.borrow())
     }
 }
 
@@ -93,5 +101,10 @@ impl<F: Borrow<str>, B: Borrow<str>> Edge<F, B> {
                 bits: self.backward.bits
             }
         }
+    }
+}
+impl<F: Borrow<str>, B: Borrow<str>> Display for Edge<F, B> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        write!(fmt, "edge ({} | {})", self.forward.string.borrow(), self.backward.string.borrow())
     }
 }

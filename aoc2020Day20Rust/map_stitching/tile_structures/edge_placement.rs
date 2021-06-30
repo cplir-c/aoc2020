@@ -1,6 +1,9 @@
 
 use std::borrow::Borrow;
 use std::clone::Clone;
+use std::fmt;
+use std::fmt::Debug;
+use std::fmt::Formatter;
 
 use super::sides::Side;
 use super::sides::SideIterator;
@@ -40,7 +43,7 @@ impl<'a, 'b, S: Borrow<str>> Iterator for PlacementEdgePlacementIterator<'a, 'b,
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct EdgeReference<'a, S: Borrow<str>> {
     pub side: Side,
     pub placement: TilePlacement<'a, S>
@@ -54,6 +57,19 @@ impl<'a, 'b, S: Borrow<str>> Clone for EdgeReference<'a, S> {
             placement: self.placement
         }
     } 
+}
+
+impl <'a, S: Borrow<str>> Debug for EdgeReference<'a, S> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        if fmt.alternate() {
+            write!(fmt, "EdgeReference {{
+                side: {:#?},
+                placement: {:#?},
+            }}", self.side, self.placement)
+        } else {
+            write!(fmt, "EdgeReference {{ side: {:?}, placement: {:?}, }}", self.side, self.placement)
+        }
+    }
 }
 
 pub struct PlacementEdgeReferenceIterator<'a, 'b, S: Borrow<str>> {

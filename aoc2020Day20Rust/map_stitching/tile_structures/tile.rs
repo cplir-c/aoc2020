@@ -4,6 +4,7 @@ use std::borrow::Borrow;
 use std::default::Default;
 use std::fmt;
 use std::fmt::Debug;
+use std::fmt::Display;
 use std::ops::Index;
 
 
@@ -87,7 +88,24 @@ impl<'a, S: Borrow<str> + Default + From<String>> Tile<'a, S> {
 
 impl<'a, S: Borrow<str>> Debug for Tile<'a, S> {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
-        write!(out, "tile ID {}", self.tile_id)
+        if out.alternate() {
+            write!(out, "Tile {{
+                tile_id: {},
+                body_string: {},
+                edges: {}
+            }}", self.tile_id, self.body_string, self.edges)
+        } else {
+            write!(out, "Tile@ID{}", self.tile_id)
+        }
+    }
+}
+impl<'a, S: Borrow<str>> Display for Tile<'a, S> {
+    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
+        if out.alternate() {
+            write!(out, "Tile {}:\n{}\n\n", self.tile_id, self.body_string)
+        } else {
+            write!(out, "Tile {}:\n{}\n    {}", self.tile_id, self.body_string, self.edges)
+        }
     }
 }
 

@@ -8,9 +8,12 @@ use std::ops::Index;
 use std::ops::IndexMut;
 
 use super::adjacent_placements::AdjacentPlacements;
-use super::super::wrappers::ListWrapper;
 use super::placement_position::PlacementPosition;
 use super::placement_position::PlacementPositionIterator;
+use super::super::wrappers::ListWrapper;
+use super::super::wrappers::OptionPrintWrapper;
+use super::super::lib_square;
+use super::super::lib_square::MapDisplay;
 
 type PlacementArray<'a, T> = Box<[Option<&'a T>]>;
 
@@ -78,8 +81,26 @@ impl<'a, T: Copy> PlacementMap<'a, T> {
         Some(mut_vec.into())
     }
 }
+impl<'a, T:?Sized + Display> Display for PlacementMap<'a, T> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        let last_pos = self.last_position();
+        if last_pos.is_none() {
+            return write!(fmt, "[<Empty PlacementMap>]");
+        };
+        let filled_count = self.len();
+        let square_width = lib_square::isqrt(filled_count);
+        let square_width = if square_width.pow(2) != filled_count { square_width + 1 } else { square_width };
+        let square_length = square_width.pow(2);
+        let tile_square: &[Option<&'a T>] = &self.placements[square_length..];
+        MapDisplay(tile_square).fmt_map(fmt, |opt_t: &Option<&'a T>| -> &OptionPrintWrapper<'a, T> {
+            unsafe {
+                std::mem::transmute::<&Option<&'a T>, &OptionPrintWrapper<'a, T>>(opt_t)
+            }
+        })
+    }
+}
 
-impl<'a, T> PlacementMap<'a, T> {
+impl<'a, T:?Sized> PlacementMap<'a, T> {
     pub fn len(&'a self) -> usize {
         let len = self.placements.len() - self.positions.len();
         if self.peek_cache.is_some() {

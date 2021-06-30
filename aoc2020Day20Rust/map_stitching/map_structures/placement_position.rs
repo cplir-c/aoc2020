@@ -201,7 +201,7 @@ impl PlacementPositionIterator {
                     }
                 };
                 if new_state.0 >= self.side_length || new_state.1 >= self.side_length {
-                    return None;
+                    None
                 } else {
                     Some(new_state)
                 }

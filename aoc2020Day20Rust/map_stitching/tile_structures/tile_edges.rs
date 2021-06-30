@@ -1,6 +1,10 @@
 
-use std::ops::Index;
 use std::borrow::Borrow;
+use std::fmt;
+use std::fmt::Debug;
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::ops::Index;
 
 use super::edges::Edge;
 use super::edges::EdgeBits;
@@ -11,7 +15,7 @@ type SemiOwnedEdge<'a, S> = Edge<&'a str, S>;
 #[allow(dead_code)]
 type BorrowedEdge<'a> = Edge<&'a str, &'a str>;
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct TileEdges<'a, S: Borrow<str>> {
     pub top: SemiOwnedEdge<'a, S>,
     pub right: AllocEdge<S>,
@@ -85,3 +89,25 @@ impl<'a, S: Borrow<str>> IntoIterator for &'a TileEdges<'a, S> {
         }
     }
 }
+
+impl<'a, S: Borrow<str>> Debug for TileEdges<'a, S> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        if fmt.alternate() {
+            write!(fmt, "TileEdges {{
+                top: {},
+                right: {},
+                bottom: {},
+                left: {}
+            }}", self.top, self.right, self.bottom, self.left)
+        } else {
+            write!(fmt, "Edges[^{} >{} v{} <{}]", self.top, self.right, self.bottom, self.left)
+        }
+    }
+}
+
+impl<'a, S: Borrow<str>> Display for TileEdges<'a, S> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        Debug::fmt(self, fmt)
+    }
+}
+

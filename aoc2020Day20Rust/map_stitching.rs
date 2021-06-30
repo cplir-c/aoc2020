@@ -48,10 +48,7 @@ fn get_corner_product<S: Borrow<str>>(map_edge_length: u16, placements: &[TilePl
     for placement in placements {
         println!("{}\n", placement);
     }
-    println!("Map pieced together:\n{}", MapDisplay(unsafe {
-        // safe because DebugWrapper<S> has the same representation as S
-        std::mem::transmute::<&[TilePlacement<S>], &[TilePlacement<DebugStrWrapper<S>>]>(placements)
-    }));
+    println!("Map pieced together:\n{}", MapDisplay(placements));
     let map_edge_length = map_edge_length as usize;
     let tile_count = map_edge_length * map_edge_length;
     let mut result: u64 = placements[0].tile.tile_id as u64;

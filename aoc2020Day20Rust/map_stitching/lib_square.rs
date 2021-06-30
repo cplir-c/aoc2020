@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::fmt::Debug;
 use std::fmt::Display;
+use std::fmt::Formatter;
 use std::fmt::Write;
 use std::iter::repeat;
 use std::ops::Add;
@@ -100,9 +101,11 @@ impl<'a, W: Write> SquareFormat<'a, W>{
 }
 
 #[repr(transparent)]
-pub struct MapDisplay<'a, T: fmt::Display>(pub &'a [T]);
-impl<'a, 'b, T: Display + Debug> fmt::Display for MapDisplay<'a, T> {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+pub struct MapDisplay<'a, T>(pub &'a [T]);
+
+impl<'a, 'b, T> MapDisplay<'a, T> {
+    pub fn fmt_map<F, D>(&self, formatter: &mut Formatter, mut mapper: F) -> fmt::Result
+      where F: FnMut(&'a T) -> D, D: Display + Debug + 'a {
         let tile_count = self.0.len();
         writeln!(formatter, "count: {}", tile_count)?;
         if tile_count == 0 {
@@ -114,16 +117,16 @@ impl<'a, 'b, T: Display + Debug> fmt::Display for MapDisplay<'a, T> {
         let (heights, widths): (&mut [usize], &mut [usize]) = sizes_vec.as_mut_slice().split_at_mut(edge_length);
         let mut tile_strings: Vec<Box<str>> = Vec::with_capacity(tile_count);
         
-        println!("heights len {}, widths len {}", heights.len(), widths.len());
+        //println!("heights len {}, widths len {}", heights.len(), widths.len());
         let mut size_guess: Option<usize> = None;
         for (row, chunk) in self.0.chunks(edge_length).enumerate() {
-            println!("row {}: {:#?}", row, chunk);
+            //println!("row {}: {:#?}", row, chunk);
             for (col, tile) in chunk.iter().enumerate() {
                 let mut string_buf: String = match size_guess{
                     Some(len) => String::with_capacity(len),
                     None => String::new()
                 };
-                write!(string_buf, "{}", tile)?;
+                write!(string_buf, "{}", mapper(tile))?;
                 if size_guess.unwrap_or_else(||string_buf.len()) >= string_buf.len() {
                     size_guess = Some(string_buf.len());
                 }
@@ -169,6 +172,12 @@ impl<'a, 'b, T: Display + Debug> fmt::Display for MapDisplay<'a, T> {
             }
         }
         Ok(())
+    }
+}
+
+impl<'a, 'b, T: Display + Debug> fmt::Display for MapDisplay<'a, T> {
+    fn fmt(&'_ self, formatter: &'_ mut fmt::Formatter) -> fmt::Result {
+        self.fmt_map(formatter, |t: &'a T| -> &'a T {t})
     }
 }
 

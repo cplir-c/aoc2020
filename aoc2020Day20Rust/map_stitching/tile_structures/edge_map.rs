@@ -34,16 +34,9 @@ pub fn lookup_tile<'a, 'b, S: Borrow<str>>
   ) -> Option<&'b EdgeReference<'a, S>> {
     let goal_tile_id: u16 = tile.tile_id;
     let placement = tile.into_iter().next();
-    if placement.is_none() {
-        return None;
-    }
-    let goal_placement = placement.unwrap();
+    let goal_placement = placement?;
     let lookup_edge = goal_placement.get_edge_placement(Side::default());
-    let edge_ref_vec: Option<&'b Vec<EdgeReference<'a, S>>> = edge_map.get(&lookup_edge);
-    if edge_ref_vec.is_none() {
-        return None;
-    }
-    let edge_ref_vec = edge_ref_vec.unwrap();
+    let edge_ref_vec: &'b Vec<EdgeReference<'a, S>> = edge_map.get(&lookup_edge)?;
     
     for edge_ref in edge_ref_vec {
         if goal_tile_id == edge_ref.placement.tile.tile_id {
@@ -185,7 +178,8 @@ mod tests {
                 *tile = MaybeUninit::new(Tile::parse(tile_str).expect("failed to parse test tile"));
             }
             unsafe {
-                mem::transmute::<_, [Tile<Box<str>>; TILE_COUNT]>(tiles)
+                // safe because it's asserting that the tiles we just initialized are initialized
+                mem::transmute::<[MaybeUninit<Tile<_>>; TILE_COUNT], [Tile<Box<str>>; TILE_COUNT]>(tiles)
             }
         };
         
@@ -199,7 +193,8 @@ mod tests {
                 }
             }
             unsafe {
-                mem::transmute::<_, [TilePlacement<_>; TILE_COUNT * 8]>(placements)
+                // we just initialized these tiles, so this is safe
+                mem::transmute::<[MaybeUninit<TilePlacement<_>>; TILE_COUNT * 8], [TilePlacement<_>; TILE_COUNT * 8]>(placements)
             }
         };
         

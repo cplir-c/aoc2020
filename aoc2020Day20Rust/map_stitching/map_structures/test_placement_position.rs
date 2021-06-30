@@ -60,8 +60,7 @@ fn test_backward_iterator() {
     it.rfold((), |_unit, item|{
         let good_item = *good_it.next().unwrap();
         if item != good_item {
-            print!("item {:?} != good item {:?}", item, good_item);
-            panic!();
+            panic!("item {:?} != good item {:?}", item, good_item);
         }
     });
 }

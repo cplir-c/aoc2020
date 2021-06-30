@@ -9,7 +9,6 @@ use std::fmt::Formatter;
 use std::marker::PhantomData;
 
 use super::backtracking::BFSProblem;
-use super::DebugStrWrapper;
 use super::EdgeMap;
 use super::EdgeReference;
 use super::EdgePlacement;
@@ -30,7 +29,7 @@ pub struct TileProblem<'a, 'b, S: Borrow<str>> {
     placements: RefCell<TilePlacementMap<'a, 'b, S>>,
     phantom: PhantomData<&'b TileCandidate<'a, 'b, S>>,
 }
-#[derive(Debug)]
+
 pub enum TileCandidate<'a, 'b, S: Borrow<str>> {
     RootTiles(Cell<&'b [Tile<'a, S>]>),
     LeafTiles(Cell<&'b [EdgeReference<'a, S>]>),
@@ -38,9 +37,6 @@ pub enum TileCandidate<'a, 'b, S: Borrow<str>> {
 impl<'a, 'b, S: Borrow<str>> Debug for &TileProblem<'a, 'b, S> {
     fn fmt(&self, fmtr: &mut Formatter) -> fmt::Result {
         let placements_ref = self.placements.borrow();
-        let placements = unsafe {
-            std::mem::transmute::<&TilePlacementMap<S>, &TilePlacementMap<DebugStrWrapper<S>>>(placements_ref.borrow())
-        };
         let placed_ids_ref = self.placed_tile_ids.borrow();
         let placed_ids: &HashSet<u16> = placed_ids_ref.borrow();
         if fmtr.alternate() {
@@ -48,14 +44,37 @@ impl<'a, 'b, S: Borrow<str>> Debug for &TileProblem<'a, 'b, S> {
                 placed_tile_ids: {},
                 placements: {}
             }}", SetWrapper::new(placed_ids)
-            , placements.as_list_fmt())
+            , placements_ref)
         } else {
             write!(fmtr, "TileProblem {{ placed_tile_ids: {}, placements: {} }}", SetWrapper::new(placed_ids)
-            , placements.as_list_fmt())
+            , placements_ref)
         }
     }
 }
+impl<'a, 'b, S: Borrow<str>> Debug for TileCandidate<'a, 'b, S> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        fn help_debug(fmt: &mut Formatter, variant: &str, d: impl Debug) -> fmt::Result {
+            if fmt.alternate() {
+                write!(fmt, "TileCandidate::{}(
+                    {:#?}
+                )", variant, d)
+            } else {
+                write!(fmt, "TileCandidate::{}({:?})", variant, d)
+            }
+        }
+        match self {
+            TileCandidate::RootTiles(tiles) => {
+                help_debug(fmt, "RootTiles", tiles)
+            },
+            TileCandidate::LeafTiles(places) => {
+                help_debug(fmt, "LeafTiles", places)
+            }
+        }
+        
+    }
+}
 impl<'a, 'b, S: Borrow<str>> TileCandidate<'a, 'b, S> {
+    
     fn is_empty(&self) -> bool {
         match self {
             TileCandidate::RootTiles(tiles) => tiles.get().is_empty(),
@@ -134,6 +153,7 @@ impl<'a, 'b, S: Borrow<str>> Clone for TileCandidate<'a, 'b, S> {
         }
     }
 }
+//impl<'a, 'b, S: Borrow<str>>
 
 impl<'a, 'b, S: Borrow<str>> TileProblem<'a, 'b, S> {
     pub fn new(tiles: &'a [Tile<'a, S>], side_length: u16) -> TileProblem<'a, 'b, S> {
@@ -180,11 +200,7 @@ impl<'a, 'b, S: Borrow<str>> BFSProblem<'b> for TileProblem<'a, 'b, S> {
         !self.is_solution(candidate) && candidate.is_empty()
     }
     fn is_solution(&self, candidate: &Self::Candidate) -> bool {
-        println!("tile problem state: {:#?}, candidate: {:?}", unsafe {
-            std::mem::transmute::<&TileProblem<S>, &TileProblem<DebugStrWrapper<S>>>(self)
-        }, unsafe {
-            std::mem::transmute::<&TileCandidate<S>, &TileCandidate<DebugStrWrapper<S>>>(candidate)
-        });
+        println!("tile problem state: {:#?}, candidate: {:?}", self, candidate);
         self.placements.borrow().len() == self.tiles.len()
     }
     fn first_extension(
