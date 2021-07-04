@@ -19,10 +19,10 @@ use super::Tile;
 use super::tile_structures;
 use super::TilePlacement;
 use super::wrappers::SetWrapper;
+use super::map_structures::PlacementPositionIterator;
 
 mod tile_candidate;
 use tile_candidate::TileCandidate;
-mod adjacent_placements;
 
 type TilePlacementMap<'a, 'b, S> = PlacementMap<'b, TilePlacement<'a, S>>;
 pub struct TileProblem<'a, 'b, S: Borrow<str>> {
@@ -70,23 +70,18 @@ impl<'a, 'b, S: Borrow<str>> TileProblem<'a, 'b, S> {
     pub fn as_placements(&'b self) -> Option<Box<[TilePlacement<'a, S>]>> {
         self.placements.borrow_mut().as_box()
     }
-    fn find_tile_placement<G, P, R, PlacementPosition>(&'b self
-                         , pos_to_fill: PlacementPosition
+    fn find_tile_placement<G, P, R>(&'b self
+                         , pos_to_fill: <PlacementPositionIterator as Iterator>::Item
                          , get_placement_slice: G
                          , package_return: P
                 ) -> Option<R>
       where G: FnOnce(Option<u16>, Option<u16>) -> Option<&'b [EdgeReference<'a, S>]>
           , P: FnOnce(&'b TilePlacement<'a, S>, &'b [EdgeReference<'a, S>]) -> R {
         let (left_bits, up_bits) = {
-            let opt_pos = self.placements.borrow().last_position(); // different opt_pos source
-            if let Some(position) = opt_pos {
-                let placements_ref = self.placements.borrow();
-                let nearby = placements_ref.get_adjacents(position);
-                (nearby.left().map(|l| l[Side::Right]),
-                   nearby.up().map(|u| u[Side::Bottom]))
-            } else {
-                return None;
-            }
+            let placements_ref = self.placements.borrow();
+            let nearby = placements_ref.get_adjacents(pos_to_fill);
+            (nearby.left().map(|l| l[Side::Right]),
+               nearby.up().map(|u| u[Side::Bottom]))
         };
         // different placements_slice source
         let mut placements_slice = get_placement_slice(left_bits, up_bits)?;
@@ -150,7 +145,7 @@ impl<'a, 'b, S: Borrow<str>> BFSProblem<'b> for TileProblem<'a, 'b, S> {
         &'b self,
         _candidate: <Self as BFSProblem<'b>>::Candidate,
     ) -> Option<<Self as BFSProblem<'b>>::Candidate> {
-        let opt_pos = self.placements.borrow_mut().peek_pos();
+        let pos = self.placements.borrow_mut().peek_pos()?;
         let get_placement_slice = |left_bits, up_bits| {
             let edge_placement = if let Some(left) = left_bits {
                 EdgePlacement {
@@ -165,11 +160,8 @@ impl<'a, 'b, S: Borrow<str>> BFSProblem<'b> for TileProblem<'a, 'b, S> {
             } else {
                 panic!("failed to get nearby placed tiles on finding next layer")
             };
-            if let Some(placement_vec) = self.edge_map.get(&edge_placement) {
-                Some(placement_vec.as_slice())
-            } else {
-                None
-            }
+            self.edge_map.get(&edge_placement)
+                .map(|placement_vec| placement_vec.as_slice())
         };
         let package_return = |placement: &'b TilePlacement<'a, S>, placements_slice|{
             // place tile
@@ -179,7 +171,7 @@ impl<'a, 'b, S: Borrow<str>> BFSProblem<'b> for TileProblem<'a, 'b, S> {
             assert!(mut_tile_ids.insert(tile_id));
             TileCandidate::LeafTiles(Cell::new(placements_slice))
         };
-        self.find_tile_placement(opt_pos, get_placement_slice, package_return)
+        self.find_tile_placement(pos, get_placement_slice, package_return)
     }
     fn next_extension(
         &'b self,
@@ -196,7 +188,7 @@ impl<'a, 'b, S: Borrow<str>> BFSProblem<'b> for TileProblem<'a, 'b, S> {
                 new_root
             },
             TileCandidate::LeafTiles(ref tile_placements) => {
-                let opt_pos = self.placements.borrow().last_position();
+                let pos = self.placements.borrow().last_position()?;
                 let get_placement_slice = |_, _| Some(tile_placements.get());
                 let package_return = |placement, placements_slice|{
                     // place tile
@@ -214,7 +206,7 @@ impl<'a, 'b, S: Borrow<str>> BFSProblem<'b> for TileProblem<'a, 'b, S> {
                     tile_placements.set(placements_slice);
                     placement
                 };
-                self.find_tile_placement(opt_pos, get_placement_slice, package_return)
+                self.find_tile_placement(pos, get_placement_slice, package_return)
             }
         };
         next.map(|_new_placement| {

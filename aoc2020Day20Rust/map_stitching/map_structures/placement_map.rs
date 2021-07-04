@@ -196,5 +196,5 @@ impl<'a, 'b, T:?Sized> Iterator for PlacementMapIterator<'a, 'b, T> {
 }
 
 #[cfg(test)]
-#[path="./test_placement_map.rs"]
+#[path="./test/test_placement_map.rs"]
 mod test_placement_map;

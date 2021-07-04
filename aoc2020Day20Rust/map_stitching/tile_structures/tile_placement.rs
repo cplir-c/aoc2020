@@ -78,7 +78,7 @@ impl<'a, S: Borrow<str>> Debug for TilePlacement<'a, S> {
         fmt.write_str("TilePlacement {")?;
         if fmt.alternate() {
             write!(fmt, "\n    orientation: {},
-                    tile: ", self.orientation);
+                    tile: ", self.orientation)?;
             self.orientation.format(fmt, self.tile.body_string)?;
             fmt.write_str("\n")?;
         } else {

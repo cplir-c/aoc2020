@@ -61,10 +61,10 @@ impl PlacementPosition {
             col: (index as u32 % side_length as u32) as u16
         }
     }
-    fn to_packed(self) -> u32 {
+    fn pack(self) -> u32 {
         self.row as u32 | (self.col as u32 >> 16)
     }
-    fn from_packed(pack: u32) -> Self {
+    fn unpack(pack: u32) -> Self {
         PlacementPosition {
             row: (pack & 0xff_ff) as u16,
             col: (pack >> 16) as u16
@@ -84,6 +84,9 @@ impl PlacementPosition {
             None
         }
     }
+    pub fn shell(self) -> u16 {
+        self.row.max(self.col)
+    }
 }
 
 impl Ord for PlacementPosition {
@@ -91,7 +94,12 @@ impl Ord for PlacementPosition {
         if self == other {
             return Ordering::Equal;
         }
-        self.pairing().cmp(&other.pairing())
+        match self.shell().cmp(&other.shell()) {
+            Ordering::Equal => {
+                self.pairing().cmp(&other.pairing())
+            },
+            order => order
+        }
     }
 }
 impl PartialOrd for PlacementPosition {
@@ -260,6 +268,6 @@ impl Iterator for PlacementPositionIterator {
 }
 
 #[cfg(test)]
-#[path="test_placement_position.rs"]
+#[path="./test/test_placement_position.rs"]
 mod test_placement_position;
 

@@ -1,5 +1,5 @@
 
-use super::placement_position::PlacementPosition;
+use super::placement_position::PlacementPositionIterator;
 
 pub struct AdjacentPlacements<'a, T: ?Sized> {
     up: Option<&'a T>,
@@ -11,7 +11,7 @@ impl<'a, T: ?Sized> AdjacentPlacements<'a, T> {
             up, left
         }
     }
-    pub fn from_slice(slice: &'a [Option<&'a T>], pos: PlacementPosition, side_length: u16) -> Self {
+    pub fn from_slice(slice: &'a [Option<&'a T>], pos: <PlacementPositionIterator as Iterator>::Item, side_length: u16) -> Self {
         let (slice, left): (&[Option<&T>], Option<&T>) = match pos.left(){
             Some(poss) => {
                 let flatpos = poss.flat_position(side_length) as usize;
@@ -36,3 +36,7 @@ impl<'a, T: ?Sized> AdjacentPlacements<'a, T> {
         self.left
     }
 }
+
+#[cfg(test)]
+#[path="./test/test_adjacent_placements.rs"]
+mod test_adjacent_placements;

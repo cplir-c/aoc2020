@@ -17,6 +17,35 @@ fn test_placement_map_construction() {
             "map positions len {}, target len {}", map.positions.len(), i * i);
     }
 }
+#[test]
+fn test_placement_map_side_length(){
+    for i in 0..=4 {
+        let side_len = 1 << i;
+        let map = PlacementMap::<usize>::new(side_len);
+        assert!(map.side_length() == side_len, "wrong side length");
+    }
+}
+#[test]
+fn test_placement_map_capacity(){
+    for i in 0..=4 {
+        let side_len = 1 << i;
+        let map = PlacementMap::<usize>::new(side_len);
+        let capacity = (side_len as usize) << i;
+        assert!(map.capacity() == capacity, "wrong total length");
+    }
+}
+#[test]
+fn test_clear_placements() {
+    let mut map = PlacementMap::<u8>::new(3);
+    let ints = (0..9).collect::<Vec<u8>>();
+    for j in ints.iter() {
+        for i in ints[..*j as usize].iter() {
+            map.push(i).expect("failed to push int");
+        }
+        map.clear();
+        assert!(map.len() == 0);
+    }
+}
 
 #[test]
 fn test_placement_map_insertion() -> Result<(), SquareMapFullError> {
