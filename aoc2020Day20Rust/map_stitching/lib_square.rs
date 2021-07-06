@@ -1,5 +1,4 @@
 use std::cmp::Ord;
-use std::cmp::Ordering;
 use std::fmt;
 use std::fmt::Debug;
 use std::fmt::Display;
@@ -7,36 +6,31 @@ use std::fmt::Formatter;
 use std::fmt::Write;
 use std::iter::repeat;
 use std::ops::Add;
+use std::ops::BitAnd;
 use std::ops::Deref;
-use std::ops::Mul;
+use std::ops::Div;
 use std::ops::Shr;
-use std::ops::Sub;
 use unicode_segmentation::UnicodeSegmentation;
 
-pub fn invert_uint_function<U, F>(target: U, f: F) -> U
-  where U: Sub<Output=U> + Add<Output=U> + Shr<Output=U>
-           + From<u8> + Ord + Copy + Display
-  , F: Fn(U) -> U {
-    let one = U::from(1);
-    let mut upper = target >> one;
-    let mut lower = U::from(0);
-    
-    while upper - lower > one {
-        let middle_bound = (upper + lower) >> one;
-        let middle_attempt = f(middle_bound);
-        match Ord::cmp(&middle_attempt, &target) {
-            Ordering::Less => { lower = middle_bound; },
-            Ordering::Equal => { return middle_bound; },
-            Ordering::Greater => { upper = middle_bound; }
-        };
-    }
-    (upper + lower) >> one
-}
-
+/// adapted from
+/// https://en.wikipedia.org/wiki/Integer_square_root#Example_implementation_in_C
 pub fn isqrt<U>(area: U) -> U
-  where U: Mul<Output=U> + Sub<Output=U> + Add<Output=U>
-           + Shr<Output=U> + From<u8> + Ord + Copy + Display {
-    invert_uint_function(area, |x|{ x * x })
+  where U: Div<Output=U> + Add<Output=U> + BitAnd<Output=U>
+           + Shr<Output=U> + Ord + Copy + Display, u8: Into<U> {
+	let one: U = 1.into();
+    let mut old_guess = area >> one;
+	let zero: U = 0.into();
+	if old_guess != zero {
+		let make_guess = |guess| (guess + area / guess) >> one;
+		let mut new_guess = make_guess(old_guess);
+		while new_guess < old_guess {
+			old_guess = new_guess;
+			new_guess = make_guess(old_guess);
+		}
+		old_guess
+	} else {
+		area
+	}
 }
 
 pub fn reverse_str<S: From<String>>(forward_str: &str) -> S {
@@ -181,6 +175,6 @@ impl<'a, 'b, T: Display + Debug> fmt::Display for MapDisplay<'a, T> {
     }
 }
 
-
-
-
+#[cfg(test)]
+#[path="./test/test_lib_square.rs"]
+mod test_lib_square;

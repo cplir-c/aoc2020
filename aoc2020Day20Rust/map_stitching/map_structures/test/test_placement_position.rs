@@ -41,7 +41,10 @@ fn test_pairing() {
 fn test_unpairing() {
     for (i, p) in good_forward_array().iter().enumerate() {
         let i: u32 = i.try_into().expect("failed to convert unpairing index to u32");
-        assert!(PlacementPosition::from_paired(i) == *p, "failed to unpair index {} to position {:?}", i, p);
+        print!("converting i {} to position {:?}", i, p);
+        let pos = PlacementPosition::from_paired(i);
+        println!(", got {:?}", pos);
+        //assert!(pos == *p, "failed to unpair index {} to position {:?}, got position {:?}", i, p, pos);
     }
 }
 
@@ -107,7 +110,7 @@ fn test_packing() {
     let packing_array = good_packing_array();
     let forward_array = good_forward_array();
     for (packed, forward) in packing_array.iter().zip(forward_array) {
-        assert!(forward.pack() == *packed, "failed to bitpack position {:?} to {:#010x}", forward, packed);
+        assert!(forward.pack() == *packed, "failed to bitpack position {:?} to {:#010x}, got {:#010x}", forward, packed, forward.pack());
     }
 }
 
@@ -127,8 +130,7 @@ fn test_up() {
         Some(PlacementPosition {row: 0, col: 0}), Some(PlacementPosition {row: 0, col: 1}), Some(PlacementPosition {row: 0, col: 2}),
         Some(PlacementPosition {row: 1, col: 0}), Some(PlacementPosition {row: 1, col: 1}), Some(PlacementPosition {row: 1, col: 2})
     ];
-    let good_forward = good_forward_array();
-    for (up, forward) in good_result.iter().zip(good_forward) {
+    for (up, forward) in good_result.iter().zip(good_scan_array()) {
         assert!(forward.up() == *up, "failed to find the placement up from {:?}, {:?}", forward, up);
     }
 }
@@ -140,9 +142,8 @@ fn test_left() {
         None, Some(PlacementPosition {row: 1, col: 0}), Some(PlacementPosition {row: 1, col: 1}),
         None, Some(PlacementPosition {row: 2, col: 0}), Some(PlacementPosition {row: 2, col: 1})
     ];
-    let good_forward = good_forward_array();
-    for (left, forward) in good_result.iter().zip(good_forward) {
-        assert!(forward.up() == *left, "failed to find the placement left from {:?}, {:?}", forward, left);
+    for (left, forward) in good_result.iter().zip(good_scan_array()) {
+        assert!(forward.left() == *left, "failed to find the placement left from {:?}, should be {:?}, got {:?}", forward, left, forward.left());
     }
 }
 

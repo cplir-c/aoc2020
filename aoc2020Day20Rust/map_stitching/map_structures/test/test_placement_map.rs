@@ -1,4 +1,6 @@
 
+use std::fmt::Write;
+
 use super::PlacementMap;
 use super::SquareMapFullError;
 
@@ -46,6 +48,20 @@ fn test_clear_placements() {
         assert!(map.len() == 0);
     }
 }
+
+#[test]
+fn test_placement_map_as_list_fmt() {
+    let ints = [1, 2, 3, 4, 5];
+    let mut map = PlacementMap::new(3);
+    for int in ints.iter() {
+        map.push(int).unwrap();
+    }
+    let mut string = String::new();
+    write!(&mut string, "{}", map.as_list_fmt()).unwrap();
+    assert!(string == "[1, 2, 3, 4, 5]", "got {}", string);
+}
+
+
 
 #[test]
 fn test_placement_map_insertion() -> Result<(), SquareMapFullError> {
