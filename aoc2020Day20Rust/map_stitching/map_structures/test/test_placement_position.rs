@@ -15,7 +15,6 @@ fn good_forward_array() -> [PlacementPosition; 9] {
         PlacementPosition {row: 2, col: 0}
     ]
 }
-
 fn good_backward_array() -> [PlacementPosition; 9] {
     [
         PlacementPosition {row: 2, col: 0},
@@ -29,14 +28,12 @@ fn good_backward_array() -> [PlacementPosition; 9] {
         PlacementPosition {row: 0, col: 0}
     ]
 }
-
 #[test]
 fn test_pairing() {
     for (i, p) in good_forward_array().iter().enumerate() {
         assert!(i == p.pairing() as usize, "failed to pair position {:?} to index {}", p, i);
     }
 }
-
 #[test]
 fn test_unpairing() {
     for (i, p) in good_forward_array().iter().enumerate() {
@@ -47,7 +44,6 @@ fn test_unpairing() {
         //assert!(pos == *p, "failed to unpair index {} to position {:?}, got position {:?}", i, p, pos);
     }
 }
-
 #[test]
 fn test_forward_iterator() {
     let it = PlacementPositionIterator::new(3);
@@ -58,7 +54,6 @@ fn test_forward_iterator() {
         assert!(test == good, "test iter gave {:?}, but good iter gave {:?}", test, good);
     }
 }
-
 fn good_scan_array() -> [PlacementPosition; 9] {
     [
         PlacementPosition {row: 0, col: 0},
@@ -72,7 +67,6 @@ fn good_scan_array() -> [PlacementPosition; 9] {
         PlacementPosition {row: 2, col: 2}
     ]
 }
-
 #[test]
 fn test_flattening() {
     let scan_positions = good_scan_array();
@@ -81,7 +75,6 @@ fn test_flattening() {
         assert!(p.flat_position(3) == i, "failed to flatten position {:?} into {}", p, i);
     }
 }
-
 #[test]
 fn test_unflattening() {
     let scan_positions = good_scan_array();
@@ -90,7 +83,6 @@ fn test_unflattening() {
         assert!(PlacementPosition::from_flat(i, 3) == *p, "failed to unflatten {} into position {:?}", i, p);
     }
 }
-
 fn good_packing_array() -> [u32; 9] {
     [ //  row, col
         0x0000_0000,
@@ -104,7 +96,6 @@ fn good_packing_array() -> [u32; 9] {
         0x0002_0000
     ]
 }
-
 #[test]
 fn test_packing() {
     let packing_array = good_packing_array();
@@ -113,7 +104,6 @@ fn test_packing() {
         assert!(forward.pack() == *packed, "failed to bitpack position {:?} to {:#010x}, got {:#010x}", forward, packed, forward.pack());
     }
 }
-
 #[test]
 fn test_unpacking() {
     let packing_array = good_packing_array();
@@ -122,7 +112,6 @@ fn test_unpacking() {
         assert!(PlacementPosition::unpack(*packed) == forward, "failed to unpack packed position {:#010x} to {:?}", packed, forward);
     }
 }
-
 #[test]
 fn test_up() {
     let good_result = [
@@ -134,7 +123,6 @@ fn test_up() {
         assert!(forward.up() == *up, "failed to find the placement up from {:?}, {:?}", forward, up);
     }
 }
-
 #[test]
 fn test_left() {
     let good_result = [
@@ -145,6 +133,14 @@ fn test_left() {
     for (left, forward) in good_result.iter().zip(good_scan_array()) {
         assert!(forward.left() == *left, "failed to find the placement left from {:?}, should be {:?}, got {:?}", forward, left, forward.left());
     }
+}
+
+#[test]
+fn test_shell() {
+	let good_shells = [0, 1, 1, 1, 2, 2, 2, 2, 2];
+	for (position, shell) in good_forward_array().iter().zip(good_shells) {
+		assert!(position.shell() == shell, "failed to");
+	}
 }
 
 #[test]

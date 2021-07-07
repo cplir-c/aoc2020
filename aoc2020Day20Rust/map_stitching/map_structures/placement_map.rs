@@ -89,12 +89,13 @@ impl<'a, T:?Sized + Display> Display for PlacementMap<'a, T> {
         };
         let filled_count = self.len();
         let square_width = lib_square::isqrt(filled_count);
-        let square_width = if square_width.pow(2) != filled_count { square_width + 1 } else { square_width };
+		eprintln!("got {} for isqrt({})", square_width, filled_count);
+        let square_width = if square_width.pow(2) <= filled_count { square_width + 1 } else { square_width };
         let square_length = square_width.pow(2);
         let tile_square: &[Option<&'a T>] = &self.placements[square_length..];
-        MapDisplay(tile_square).fmt_map(fmt, |opt_t: &Option<&'a T>| -> &OptionPrintWrapper<'a, T> {
+        MapDisplay(tile_square).fmt_map(fmt, |opt_t: &'_ Option<&'a T>| -> &'_ OptionPrintWrapper<'a, T> {
             unsafe {
-                std::mem::transmute::<&Option<&'a T>, &OptionPrintWrapper<'a, T>>(opt_t)
+                std::mem::transmute::<&'_ Option<&'a T>, &'_ OptionPrintWrapper<'a, T>>(opt_t)
             }
         })
     }
