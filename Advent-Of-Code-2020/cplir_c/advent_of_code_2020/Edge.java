@@ -152,79 +152,31 @@ public final class Edge {
         // set references to and from this.reversed
         // there should be one for translated and one for rotated
         // try to find rotated source
-        do {
-            // (node + 4) ^ 1
-            if (this.translated != null) {
-                // what am I thinking, I need to get (node + 6) ^ 1 not node + 6
-                // (node + 6) ^ 1 and node + 6
-                if (this.translated.rotated != null && this.translated.rotated.reversed != null) {
-                    this.translated.rotated.reversed.rotated = this.reversed;
-                    break;
-                    // node + 4 and node + 6
-                } else if (this.translated.reversed != null && this.translated.reversed.rotated != null) {
-                    this.translated.reversed.rotated.rotated = this.reversed;
-                    break;
-                } else { /* intentionally empty */ }
-            }
-            // node + 2
-            if (this.rotated != null) {
-                // (node + 6) ^ 1 and node + 6
-                if (this.rotated.translated != null && this.rotated.translated.reversed != null) {
-                    this.rotated.translated.reversed.rotated = this.reversed;
-                    // (node + 2) ^ 1 and node + 6
-                } else if (this.rotated.reversed != null && this.rotated.reversed.translated != null) {
-                    this.rotated.reversed.translated.rotated = this.reversed;
-                } else { /* intentionally empty */ }
-            }
-        } while (false);
-        // try to find the translated source
-        {
-            Edge translationSource;
-            // (node + 4) ^ 1 and node + 4
-            if (this.translated != null && this.translated.reversed != null) {
-                translationSource = this.translated.reversed;
-            // node + 2 and node + 4
-            } else if (this.rotated != null && this.rotated.rotated != null) {
-                translationSource = this.rotated.rotated;
-            } else {
-                translationSource = null;
-            }
-            if (translationSource != null) {
-                this.reversed.translated     = translationSource;
-                translationSource.translated = this.reversed;
+        { // find the rotation of reversed
+            var rotReversed = findRotReversed();
+            if (rotReversed != null) {
+                this.reversed.rotated = rotReversed;
             }
         }
-        // try to find the rotation target
-        do {
-            // node + 2
-            if (this.rotated != null) {
-                // (node + 2) ^ 1
-                if (this.rotated.reversed != null) {
-                    this.reversed.rotated = this.rotated.reversed;
-                    break;
-                    // (node + 6) ^ 1
-                } else if (this.rotated.translated != null) {
-                    // node ^ 1 and node
-                    if (this.rotated.translated.rotated != null && this.rotated.translated.rotated.rotated != null) {
-                        this.reversed.rotated = this.rotated.translated.rotated.rotated;
-                        break;
-                    }
-                }
-            // (node + 4) ^ 1
-            } else if (this.translated != null) {
-                // node + 4 and node + 6 and (node + 2) ^ 1
-                if (this.translated.reversed != null && this.translated.reversed.rotated != null
-                    && this.translated.reversed.rotated.translated != null) {
-                    this.reversed.rotated = this.translated.reversed.rotated.translated;
-                }
-            } else { /* intentionally empty */ }
-        } while (false);
+        { // find the translation of reversed
+            var rotRot = findRotRot();
+            if (rotRot != null) {
+                rotRot.translated        = this.reversed;
+                this.reversed.translated = rotRot;
+            }
+        }
+        { // find the rotates-to-reversed
+            var transRot = findTransRot();
+            if (transRot != null) {
+                transRot.rotated = this.reversed;
+            }
+        }
     }
     public Edge translate() {
         if (this.translated != null) {
             getTranslated();
         }
-        return this.translated();
+        return this.translated;
     }
     private void getTranslated() {
         var translatedOrientation      = switch (this.edgeOrientation) {
@@ -244,6 +196,27 @@ public final class Edge {
         }
         this.translated = new Edge(this.edgeStr, this.edgeBits, otherTranslatedOrientation, null, this, null);
         this.distributeTranslated();
+    }
+    private void distributeTranslated() {
+        { // find rotation of translated
+            var transRot = findTransRot();
+            if (transRot != null) {
+                this.translated.rotated = transRot;
+            }
+        }
+        { // find reverses to translated
+            var rotRot = findRotRot();
+            if (rotRot != null) {
+                this.translated.reversed = rotRot;
+                rotRot.reversed          = this.translated;
+            }
+        }
+        { // find rotates-to-translated
+            var rotReversed = findRotReversed();
+            if (rotReversed != null) {
+                rotReversed.rotated = this.translated;
+            }
+        }
     }
     public Edge rotate() {
         if (this.rotated != null) {
@@ -265,5 +238,160 @@ public final class Edge {
             this.rotated.rotated = this.translated;
         }
         this.distributeRotated();
+    }
+    private void distributeRotated() {
+        { // find reverses to rotated
+            var rotReversed = findRotReversed();
+            if (rotReversed != null) {
+                rotReversed.reversed  = this.rotated;
+                this.rotated.reversed = rotReversed;
+            }
+        }
+        { // find translates to rotated
+            var transRot = findTransRot();
+            if (transRot != null) {
+                transRot.translated     = this.rotated;
+                this.rotated.translated = transRot;
+            }
+        }
+        { // find rotated from rotated
+            var rotRot = findRotRot();
+            if (rotRot != null) {
+                this.rotated.rotated = rotRot;
+            }
+        }
+    }
+    /**
+     * The entire lazy reference graph:
+     * //formatter:off
+     *
+     *    [translate]---reversed------>[rotate]------>rotreversed---[translate]
+     *         |         ^      \                     /   |             |
+     *         |         |   [reverse]          [reverse] |             |
+     *      rotrot       |        \                 /     |             |
+     *                   |        root->[rotate]->rot     |         rotrotrot
+     *                   |         ^               |      |
+     *               [rotate]      |               v      |
+     *                   ^      [rotate]        [rotate]  v
+     *                   |         ^               |    [rotate]
+     *                   |         |               v      |
+     *                   |   rotrotrot<-[rotate]<-rotrot  |
+     *        rot        |      /                    \    |       root
+     *         |         |   [reverse]          [reverse] |         |
+     *         |         |    /                        \  v         |
+     *    [translate]---transrot<------[rotate]<-------trans---[translate]
+     *
+     *   undirected edges mean bidirectional references,
+     *   directed edges mean one way references
+     * //formatter:on
+     */
+    protected Edge findRotRot() {
+        if (this.rotated != null) {
+            return this.rotated.rotated;
+        } else if (this.translated != null) {
+            return this.translated.reversed;
+        } else if (this.reversed != null) {
+            return this.reversed.translated;
+        } else {
+            return null;
+        }
+    }
+    protected Edge findTransRot() {
+        if (this.rotated != null) {
+            return this.rotated.translated;
+        } else if (this.translated != null) {
+            return this.translated.rotated;
+        } else if (this.reversed != null) {
+            if (this.reversed.rotated != null) {
+                var rotReversed = this.reversed.rotated;
+                // rotReversed.rotated is silly cause its the same as trans
+                // rotReversed.reversed is silly cause it's the same as rot
+                if (rotReversed.translated != null) {
+                    return rotReversed.translated.reversed;
+                }
+            }
+            if (this.reversed.translated != null) {
+                var rotRot = this.reversed.translated;
+                if (rotRot.rotated != null) {
+                    return rotRot.rotated.reversed;
+                }
+                // rotRot.reversed is silly cause its the same as trans
+                // rotRot.translated is silly cause its the same as reversed
+            }
+            // reversed.reversed is silly cause its the same as root
+        }
+        return null;
+    }
+    protected Edge findRotReversed() {
+        if (this.rotated != null) {
+            return this.rotated.reversed;
+        } else if (this.reversed != null) {
+            return this.reversed.rotated;
+        } else if (this.translated != null) {
+            if (this.translated.rotated != null) {
+                var transRot = this.translated.rotated;
+                // transRot.rotated is silly cause its the same as reversed
+                if (transRot.reversed != null) {
+                    return transRot.reversed.translated;
+                }
+                // transRot.translated is silly cause its the same as rot
+            }
+            if (this.translated.reversed != null) {
+                var rotRot = this.translated.reversed;
+                if (rotRot.rotated != null) {
+                    return rotRot.rotated.translated;
+                }
+                // rotRot.reversed is silly cause its the same as trans
+                // rotRot.translated is silly cause its the same as reversed
+            }
+        } else { /* fallthrough to return null */ }
+        return null;
+    }
+    protected Edge findRotRotRot() {
+        if (this.rotated != null) {
+            if (this.rotated.rotated != null) {
+                var rotRot = this.rotated.rotated;
+                return rotRot.rotated;
+            }
+            if (this.rotated.translated != null) {
+                var transRot = this.rotated.translated;
+                return transRot.reversed;
+            }
+            if (this.rotated.reversed != null) {
+                var rotReversed = this.rotated.reversed;
+                // rotReversed.rotated is silly cause its the same as trans
+                // rotReversed.reversed is silly cause its the same as rotated
+                if (rotReversed.translated != null) {
+                    return rotReversed.translated.reversed;
+                }
+            }
+        }
+        if (this.reversed != null) {
+            if (this.reversed.rotated != null) {
+                var rotReversed = this.reversed.rotated;
+                // rotReversed.rotated is silly cause its the same as trans
+                // rotReversed.reversed is silly cause its the same as rotated
+                if (rotReversed.translated != null) {
+                    return rotReversed.translated.reversed;
+                }
+            }
+            // this.reversed.reversed is silly cause its the same as root
+            if (this.reversed.translated != null) {
+                var rotRot = this.reversed.translated;
+                return rotRot.rotated;
+            }
+        }
+        if (this.translated != null) {
+            if (this.translated.rotated != null) {
+                var transRot = this.translated.rotated;
+                return transRot.reversed;
+            }
+            if (this.translated.reversed != null) {
+                var rotRot = this.translated.reversed;
+                return rotRot.rotated;
+            }
+            // this.translated.translated is silly cause its the same as root
+        }
+        return null;
     }
 }
