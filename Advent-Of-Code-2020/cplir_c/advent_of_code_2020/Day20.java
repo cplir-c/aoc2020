@@ -28,6 +28,10 @@ public class Day20 {
     public static void main(String[] $_$) {
         cornerIDProduct(EXAMPLE);
         cornerIDProduct(INPUT);
+        System.out.println(sqrt(1));
+        System.out.println(sqrt(2));
+        System.out.println(sqrt(3));
+        System.out.println(sqrt(4));
     }
 
     static void cornerIDProduct(String input) {
@@ -102,8 +106,8 @@ public class Day20 {
         addTileEdges(thrice, tilesByEdge);
     }
 
-    static final IntFunction<Byte2ObjectMap<ObjectSet<Tile>>> NEW_BYTE2TILESET_MAP = $ -> new Byte2ObjectOpenHashMap<>(8);
-    static final IntFunction<ObjectSet<Tile>>                 NEW_TILESET          = $ -> new ObjectOpenHashSet<>(4);
+    static final IntFunction<Byte2ObjectMap<ObjectSet<Tile>>> NEW_BYTE2TILESET_MAP = __ -> new Byte2ObjectOpenHashMap<>(8);
+    static final IntFunction<ObjectSet<Tile>>                 NEW_TILESET          = __ -> new ObjectOpenHashSet<>(4);
 
     static void addTileEdges(Tile tile, Short2ObjectMap<Byte2ObjectMap<ObjectSet<Tile>>> tilesByEdge) {
 

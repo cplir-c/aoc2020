@@ -1,7 +1,5 @@
 package cplir_c.advent_of_code_2020;
 
-import cplir_c.advent_of_code_2020.Edge.EdgeOrientation;
-
 public final class Edge {
     final String edgeStr;
     final short  edgeBits;
@@ -68,21 +66,19 @@ public final class Edge {
         var edgeOrientationFields = Edge.EdgeOrientation.class.getDeclaredFields();
         for (var i = edgeOrientationFields.length - 1; i >= 0; --i) {
             var field = edgeOrientationFields[i];
-            {
-                var name = field.getName();
-                int value;
-                try {
-                    var obj = field.get(null);
-                    if (obj instanceof Number) {
-                        value = ((Number) obj).intValue();
-                    } else {
-                        continue;
-                    }
-                } catch (ReflectiveOperationException e) {
-                    throw new AssertionError(e);
+            var name  = field.getName();
+            int value;
+            try {
+                var obj = field.get(null);
+                if (obj instanceof Number) {
+                    value = ((Number) obj).intValue();
+                } else {
+                    continue;
                 }
-                Edge.EdgeOrientation.EDGE_ORIENTATIONS[value] = name.toLowerCase().replace('_', ' ');
+            } catch (ReflectiveOperationException e) {
+                throw new AssertionError(e);
             }
+            Edge.EdgeOrientation.EDGE_ORIENTATIONS[value] = name.toLowerCase().replace('_', ' ');
         }
     }
 
@@ -113,26 +109,15 @@ public final class Edge {
 
     public Edge reverse() {
         if (this.reversed == null) {
-            getReversed();
+            this.getReversed();
         }
         return this.reversed;
     }
     private void getReversed() {
         String reversedStr = null;
-        byte reversedEdge;
+        short  reversedEdge;
         {
-            Edge reversedObj;
-            if (this.translated != null && this.translated.reversed != null) {
-                reversedObj = this.translated.reversed;
-            } else if (this.translated != null && this.translated.rotated != null && this.translated.rotated.reversed != null) {
-                reversedObj = this.translated.rotated.reversed;
-            } else if (this.rotated != null && this.rotated.reversed != null) {
-                reversedObj = this.rotated.reversed;
-            } else if (this.rotated != null && this.rotated.translated != null && this.rotated.translated.reversed != null) {
-                reversedObj = this.rotated.translated.reversed;
-            } else {
-                reversedObj = null;
-            }
+            final var reversedObj = this.findReversedBitOrderObj();
             if (reversedObj != null) {
                 reversedStr = reversedObj.edgeStr;
                 reversedEdge = reversedObj.edgeBits;
@@ -145,121 +130,164 @@ public final class Edge {
         }
         var reversedDirection = this.edgeOrientation;
         reversedDirection ^= 1;
-        this.reversed      = new Edge(reversedStr, reversedEdge, reversedDirection, this, null, null);
-        this.distributeReversed();
+        var reversed = new Edge(reversedStr, reversedEdge, reversedDirection, this, null, null);
+        this.distributeReversed(reversed);
     }
-    private void distributeReversed() {
+    private Edge findReversedBitOrderObj() {
+        if (this.translated != null) {
+            return this.translated;
+        }
+        {
+            var rotReversed = this.findRotReversed();
+            if (rotReversed != null) {
+                return rotReversed;
+            }
+        }
+        {
+            var transRot = this.findTransRot();
+            if (transRot != null) {
+                return transRot;
+            }
+        }
+        return null;
+    }
+    private void distributeReversed(Edge rev) {
         // set references to and from this.reversed
         // there should be one for translated and one for rotated
-        // try to find rotated source
-        { // find the rotation of reversed
-            var rotReversed = findRotReversed();
-            if (rotReversed != null) {
-                this.reversed.rotated = rotReversed;
-            }
+
+        // find the rotation of reversed
+        var rotReversed = this.findRotReversed();
+        // find the translation of reversed
+        var rotRot = this.findRotRot();
+        // find the rotates-to-reversed
+        var transRot = this.findTransRot();
+        if (rotReversed != null) {
+            rev.rotated = rotReversed;
         }
-        { // find the translation of reversed
-            var rotRot = findRotRot();
-            if (rotRot != null) {
-                rotRot.translated        = this.reversed;
-                this.reversed.translated = rotRot;
-            }
+        if (rotRot != null) {
+            rotRot.translated = rev;
+            rev.translated    = rotRot;
         }
-        { // find the rotates-to-reversed
-            var transRot = findTransRot();
-            if (transRot != null) {
-                transRot.rotated = this.reversed;
-            }
+        if (transRot != null) {
+            transRot.rotated = rev;
         }
+        this.reversed = rev;
     }
     public Edge translate() {
-        if (this.translated != null) {
-            getTranslated();
+        if (this.translated == null) {
+            this.getTranslated();
         }
         return this.translated;
     }
     private void getTranslated() {
-        var translatedOrientation      = switch (this.edgeOrientation) {
-            case EdgeOrientation.CLOCKWISE_RIGHT -> EdgeOrientation.COUNTERCLOCKWISE_LEFT;
-            case EdgeOrientation.COUNTERCLOCKWISE_RIGHT -> EdgeOrientation.CLOCKWISE_LEFT;
-            case EdgeOrientation.CLOCKWISE_UP -> EdgeOrientation.COUNTERCLOCKWISE_DOWN;
-            case EdgeOrientation.COUNTERCLOCKWISE_UP -> EdgeOrientation.CLOCKWISE_DOWN;
-            case EdgeOrientation.CLOCKWISE_LEFT -> EdgeOrientation.COUNTERCLOCKWISE_RIGHT;
-            case EdgeOrientation.COUNTERCLOCKWISE_LEFT -> EdgeOrientation.CLOCKWISE_RIGHT;
-            case EdgeOrientation.CLOCKWISE_DOWN -> EdgeOrientation.COUNTERCLOCKWISE_UP;
-            case EdgeOrientation.COUNTERCLOCKWISE_DOWN -> EdgeOrientation.CLOCKWISE_UP;
-            default -> throw new AssertionError(this.edgeOrientation);
-        };
-        var otherTranslatedOrientation = (byte) (((this.edgeOrientation + 4) ^ 1) & 7);
-        if (translatedOrientation != otherTranslatedOrientation) {
-            throw new AssertionError();
-        }
-        this.translated = new Edge(this.edgeStr, this.edgeBits, otherTranslatedOrientation, null, this, null);
-        this.distributeTranslated();
+        var translatedOrientation = this.edgeOrientation;
+        translatedOrientation += 4;
+        translatedOrientation ^= 1;
+        var trans = new Edge(this.edgeStr, this.edgeBits, translatedOrientation, null, this, null);
+        this.distributeTranslated(trans);
     }
-    private void distributeTranslated() {
-        { // find rotation of translated
-            var transRot = findTransRot();
-            if (transRot != null) {
-                this.translated.rotated = transRot;
-            }
+    private void distributeTranslated(Edge trans) {
+        // find rotation of translated
+        var transRot = this.findTransRot();
+        // find reverses to translated
+        var rotRot = this.findRotRot();
+        // find rotates-to-translated
+        var rotReversed = this.findRotReversed();
+        if (transRot != null) {
+            trans.rotated = transRot;
         }
-        { // find reverses to translated
-            var rotRot = findRotRot();
-            if (rotRot != null) {
-                this.translated.reversed = rotRot;
-                rotRot.reversed          = this.translated;
-            }
+        if (rotRot != null) {
+            trans.reversed  = rotRot;
+            rotRot.reversed = trans;
         }
-        { // find rotates-to-translated
-            var rotReversed = findRotReversed();
-            if (rotReversed != null) {
-                rotReversed.rotated = this.translated;
-            }
+        if (rotReversed != null) {
+            rotReversed.rotated = trans;
         }
+        this.translated = trans;
     }
     public Edge rotate() {
-        if (this.rotated != null) {
-            getRotated();
+        if (this.rotated == null) {
+            this.getRotated();
         }
         return this.rotated;
     }
     private void getRotated() {
-        var otherRotatedOrientation = (byte) ((this.edgeOrientation + 2) & 7);
-        this.rotated = new Edge(this.edgeStr, this.edgeBits, otherRotatedOrientation, null, null, null);
+        Edge rotated;
+        {
+            var otherRotatedOrientation = (byte) ((this.edgeOrientation + 2) & 7);
+            rotated = new Edge(this.edgeStr, this.edgeBits, otherRotatedOrientation, null, null, null);
+        }
+        this.distributeRotated(rotated);
         // look for a bridge object back to the ring
-        if (this.translated != null) {
-            this.rotated.rotated = this.translated;
-        } else if (this.reversed != null && this.reversed.rotated != null) {
-            this.rotated.reversed = this.reversed.rotated;
-        } else {
-            // if there is no bridge object, make one
-            getTranslated();
-            this.rotated.rotated = this.translated;
+        if (rotated.rotated == null && rotated.reversed == null && rotated.translated == null) {
+            this.constructBridgeFromRotated(rotated);
         }
-        this.distributeRotated();
     }
-    private void distributeRotated() {
-        { // find reverses to rotated
-            var rotReversed = findRotReversed();
-            if (rotReversed != null) {
-                rotReversed.reversed  = this.rotated;
-                this.rotated.reversed = rotReversed;
-            }
+    /** create a bridge back to this from rotated */
+    private void constructBridgeFromRotated(Edge rot) {
+        // try to find an object for the other side of a single object bridge
+        /*
+         * rot --[rotate]---> rotrot ----[rotate]------> rotrotrot -[rotate]-> root
+         * rot --[rotate]---> rotrot ----[reverse]-----> trans -[translate]--> root
+         * rot --[rotate]---> rotrot ----[translate]---> reversed -[reverse]-> root
+         * rot --[reverse]--> rotreversed --[rotate]---> trans -[translate]--> root
+         * rot --[reverse]--> rotreversed -[translate]-> rotrotrot -[rotate]-> root
+         * rot -[translate]-> transrot ----[reverse]---> rotrotRot -[rotate]-> root
+         * rot -[translate]-> transrot ----[rotate]----> reversed -[reverse]-> root
+         */
+        // second half present, create the first link obj
+        if (this.translated != null) {
+            this.translated.getReversed();
+            return;
         }
-        { // find translates to rotated
-            var transRot = findTransRot();
-            if (transRot != null) {
-                transRot.translated     = this.rotated;
-                this.rotated.translated = transRot;
-            }
+        if (this.reversed != null) {
+            this.reversed.getTranslated();
+            return;
         }
-        { // find rotated from rotated
-            var rotRot = findRotRot();
+        // first half present, create the second link obj
+        {
+            var rotRot = this.findRotRot();
             if (rotRot != null) {
-                this.rotated.rotated = rotRot;
+                rotRot.getTranslated();
+                return;
             }
         }
+        {
+            var rotReversed = this.findRotReversed();
+            if (rotReversed != null) {
+                rotReversed.getTranslated();
+                return;
+            }
+        }
+        {
+            var transRot = this.findTransRot();
+            if (transRot != null) {
+                transRot.getReversed();
+                return;
+            }
+        }
+        // neither present, create both
+        this.reverse().getTranslated();
+    }
+    private void distributeRotated(Edge rotated) {
+        // find reverses to rotated
+        var rotReversed = this.findRotReversed();
+        // find translates to rotated
+        var transRot = this.findTransRot();
+        // find rotates from rotated
+        var rotRot = this.findRotRot();
+        if (rotReversed != null) {
+            rotReversed.reversed = rotated;
+            rotated.reversed     = rotReversed;
+        }
+        if (transRot != null) {
+            transRot.translated = rotated;
+            rotated.translated  = transRot;
+        }
+        if (rotRot != null) {
+            rotated.rotated = rotRot;
+        }
+        this.rotated = rotated;
     }
     /**
      * The entire lazy reference graph:

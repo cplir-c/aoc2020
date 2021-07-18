@@ -252,7 +252,7 @@ public final class Day20b {
                                          Int2IntOpenHashMap solution, IntSet usedTiles, IntArrayList modeStack,
                                          ObjectArrayList<AbstractIntList> tileStackStack) {
         // test feasibility of shifts
-        // test feasibility of tile-adjancent spaces
+        // test feasibility of tile-adjacent spaces
         Int2ByteMap
     }
 
