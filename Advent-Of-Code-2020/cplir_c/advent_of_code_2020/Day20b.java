@@ -6,6 +6,8 @@ import static cplir_c.advent_of_code_2020.Day20.LINES;
 import static cplir_c.advent_of_code_2020.Day20.TILE_LINE;
 
 import cplir_c.advent_of_code_2020.Edge.EdgeOrientation;
+import it.unimi.dsi.fastutil.bytes.Byte2ObjectMap;
+import it.unimi.dsi.fastutil.bytes.Byte2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.AbstractIntList;
 import it.unimi.dsi.fastutil.ints.Int2IntMaps;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
@@ -16,11 +18,15 @@ import it.unimi.dsi.fastutil.ints.IntArraySet;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
+import it.unimi.dsi.fastutil.objects.Reference2IntMap;
+import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ReferenceArraySet;
 import it.unimi.dsi.fastutil.objects.ReferenceSet;
 
@@ -37,11 +43,14 @@ public final class Day20b {
     static void findCornerProduct(String input) {
         System.out.println("finding corners with input length " + input.length());
         var id2TileStringMap = parseInput(input);
+        var tileTotal        = id2TileStringMap.size();
+
         var id2EdgesMap      = findEdges(id2TileStringMap);
-        var tileTotal        = id2EdgesMap.size();
-        var edge2IdsMap      = createInverseEdgeMap(id2EdgesMap);
+        var edge2IdsMap     = createEdge2IdsMap(id2EdgesMap);
+        var edgeMatchingMap = createEdgeMatchingMap(id2EdgesMap);
+
         var edgeLength       = Day20.sqrt(tileTotal);
-        var solution         = matchEdges(id2EdgesMap, edge2IdsMap, edgeLength, tileTotal);
+        var solution   = matchEdges(id2EdgesMap, edge2IdsMap, edgeMatchingMap, edgeLength, tileTotal);
         var one              = solution.getInt(0);
         var two              = solution.getInt(edgeLength - 1);
         var three            = solution.getInt(tileTotal - edgeLength);
@@ -49,8 +58,89 @@ public final class Day20b {
         System.out.println(one + " " + two + " " + three + " " + four + " *= " + (one * two * three * four));
     }
 
-    static IntList matchEdges(Int2ObjectMap<ObjectSet<Edge>> id2EdgesMap, Object2ObjectMap<Edge, IntSet> edge2IdsMap,
-                              int edgeLength, int totalTiles) {
+    static Int2ObjectMap<String> parseInput(String input) {
+        var idTileStrings = LINES.split(input);
+        var map           = new Int2ObjectOpenHashMap<String>(idTileStrings.length);
+        for (String idTileString : idTileStrings) {
+            var lines      = TILE_LINE.split(idTileString, 2);
+            var idString   = lines[0];
+            var id         = Integer.parseInt(idString.substring(5));
+            var tileString = lines[1];
+            map.put(id, tileString);
+        }
+        return map;
+    }
+
+    static Int2ObjectMap<Byte2ObjectMap<Edge>> findEdges(Int2ObjectMap<String> id2TileStringMap) {
+        Int2ObjectMap<Byte2ObjectMap<Edge>> idEdgeMap = new Int2ObjectOpenHashMap<>(id2TileStringMap.size());
+        for (var entry : id2TileStringMap.int2ObjectEntrySet()) {
+            var edgeMap         = new Byte2ObjectOpenHashMap<Edge>(8);
+            var id              = entry.getIntKey();
+            var tileString      = entry.getValue();
+            var tileLines       = TILE_LINE.split(tileString);
+            var topEdge         = new Edge(tileLines[0], Edge.EdgeOrientation.COUNTERCLOCKWISE_UP);
+            var bottomEdge      = new Edge(tileLines[9], Edge.EdgeOrientation.CLOCKWISE_DOWN);
+            var leftEdgeString  = new StringBuilder(10);
+            var rightEdgeString = new StringBuilder(10);
+            for (var i = 9; i >= 0; --i) {
+                var line  = tileLines[i];
+                var left  = line.charAt(0);
+                var right = line.charAt(9);
+                leftEdgeString.append(left);
+                rightEdgeString.append(right);
+            }
+            var leftEdge  = new Edge(leftEdgeString.toString(), Edge.EdgeOrientation.CLOCKWISE_LEFT);
+            var rightEdge = new Edge(rightEdgeString.toString(), Edge.EdgeOrientation.COUNTERCLOCKWISE_RIGHT);
+            edgeMap.put(leftEdge.edgeOrientation, leftEdge);
+            edgeMap.put(rightEdge.edgeOrientation, rightEdge);
+            edgeMap.put(topEdge.edgeOrientation, topEdge);
+            edgeMap.put(bottomEdge.edgeOrientation, bottomEdge);
+            for (Edge mainEdge : edgeMap.values().toArray(Edge[]::new)) {
+                addEdgeRotations(edgeMap, mainEdge);
+                addEdgeRotations(edgeMap, mainEdge.translate());
+            }
+            edgeMap.trim();
+            idEdgeMap.put(id, edgeMap);
+        }
+        return idEdgeMap;
+    }
+
+    private static void addEdgeRotations(Byte2ObjectMap<Edge> edgeMap, Edge root) {
+        var rot       = root.rotate();
+        var rotRot    = rot.rotate();
+        var rotRotRot = rotRot.rotate();
+        edgeMap.putIfAbsent(root.edgeOrientation, root);
+        edgeMap.putIfAbsent(rot.edgeOrientation, rot);
+        edgeMap.putIfAbsent(rotRot.edgeOrientation, rotRot);
+        edgeMap.putIfAbsent(rotRotRot.edgeOrientation, rotRotRot);
+    }
+
+    static Reference2IntMap<Edge> createEdge2IdsMap(Int2ObjectMap<Byte2ObjectMap<Edge>> id2EdgesMap) {
+        var edge2IdsMap = new Reference2IntOpenHashMap<Edge>(id2EdgesMap.size());
+        for (var idAndTile : id2EdgesMap.int2ObjectEntrySet()) {
+            var id   = idAndTile.getIntKey();
+            var tile = idAndTile.getValue();
+            for (Edge edge : tile.values()) {
+                edge2IdsMap.put(edge, id);
+            }
+        }
+        edge2IdsMap.trim();
+        return edge2IdsMap;
+    }
+
+    static Int2ObjectMap<Edge> createEdgeMatchingMap(Int2ObjectMap<Byte2ObjectMap<Edge>> id2EdgesMap) {
+        var edgeMatchingMap = new Int2ObjectOpenHashMap<Edge>(id2EdgesMap.size());
+        for (Byte2ObjectMap<Edge> tile : id2EdgesMap.values()) {
+            for (Edge edge : tile.values()) {
+                edgeMatchingMap.put(edge.translate().hashCode(), edge);
+            }
+        }
+        edgeMatchingMap.trim();
+        return edgeMatchingMap;
+    }
+
+    static IntList matchEdges(Int2ObjectMap<Byte2ObjectMap<Edge>> id2EdgesMap, Reference2IntMap<Edge> edge2IdsMap,
+                              Int2ObjectMap<Edge> edgeMatchingMap, int edgeLength, int totalTiles) {
         var solution = new Int2IntOpenHashMap(totalTiles);
         solution.defaultReturnValue(-1);
         IntSet usedTiles = new IntOpenHashSet(totalTiles);
@@ -80,7 +170,8 @@ public final class Day20b {
                 mode = tryPopNextMode(modeStack, modeStackStack);
                 if (mode > -5) {
                     evaluateNewMode(
-                        id2EdgesMap, edge2IdsMap, mode, solution, modeStack, usedTiles, tileStackStack, edgeLength, totalTiles
+                        id2EdgesMap, edge2IdsMap, edgeMatchingMap, mode, solution, modeStack, usedTiles, tileStackStack,
+                        edgeLength, totalTiles
                     );
                 }
             } else {
@@ -95,8 +186,8 @@ public final class Day20b {
                     mode = tryPopNextMode(modeStack, modeStackStack);
                     if (mode > -5) {
                         evaluateNewMode(
-                            id2EdgesMap, edge2IdsMap, mode, solution, modeStack, usedTiles, tileStackStack, edgeLength,
-                            totalTiles
+                            id2EdgesMap, edge2IdsMap, edgeMatchingMap, mode, solution, modeStack, usedTiles, tileStackStack,
+                            edgeLength, totalTiles
                         );
                     }
                 } else {
@@ -106,7 +197,7 @@ public final class Day20b {
                     usedTiles.remove(prevTileID);
                     usedTiles.add(tileID);
                     // recurse if possible
-                    populateNextMove(id2EdgesMap, edge2IdsMap, solution, usedTiles, modeStack, tileStackStack);
+                    populateNextMove(id2EdgesMap, edge2IdsMap, edgeMatchingMap, solution, usedTiles, modeStack, tileStackStack);
                 }
             }
         }
@@ -118,7 +209,8 @@ public final class Day20b {
         return listOut;
     }
 
-    private static void evaluateNewMode(Int2ObjectMap<ObjectSet<Edge>> id2EdgesMap, Object2ObjectMap<Edge, IntSet> edge2IdsMap,
+    private static void evaluateNewMode(Int2ObjectMap<Byte2ObjectMap<Edge>> id2EdgesMap,
+                                        Reference2IntMap<Edge> edge2IdsMap, Int2ObjectMap<Edge> edgeMatchingMap,
                                         int mode, Int2IntOpenHashMap solution, IntArrayList modeStack, IntSet usedTiles,
                                         ObjectArrayList<AbstractIntList> tileStackStack, int edgeLength, int totalTiles) {
         modeStack.add(mode);
@@ -133,12 +225,15 @@ public final class Day20b {
             });
         } else {
             // new tile placing mode selected
-            populateTileStackStack(id2EdgesMap, edge2IdsMap, mode, solution, usedTiles, tileStackStack, edgeLength, totalTiles);
+            populateTileStackStack(
+                id2EdgesMap, edge2IdsMap, edgeMatchingMap, mode, solution, usedTiles, tileStackStack, edgeLength, totalTiles
+            );
         }
     }
 
     private static void
-        populateTileStackStack(Int2ObjectMap<ObjectSet<Edge>> id2EdgesMap, Object2ObjectMap<Edge, IntSet> edge2IdsMap,
+        populateTileStackStack(Int2ObjectMap<Byte2ObjectMap<Edge>> id2EdgesMap, Reference2IntMap<Edge> edge2IdsMap,
+                               Int2ObjectMap<Edge> edgeMatchingMap,
                                int position, Int2IntOpenHashMap solution, IntSet usedTiles,
                                ObjectArrayList<AbstractIntList> tileStackStack, int edgeLength, int totalTiles) {
         // new tile placing mode selected, so queue the most likely tiles in order
@@ -175,7 +270,7 @@ public final class Day20b {
         } else {
             possibleTileIDs = null;
             for (Edge matchEdge : matchedEdges) {
-                var tileIDs = edge2IdsMap.get(matchEdge);
+                let tiles
                 if (possibleTileIDs == null) {
                     possibleTileIDs = new IntArraySet(tileIDs);
                 } else {
@@ -186,7 +281,7 @@ public final class Day20b {
         tileStackStack.push(new IntArrayList(possibleTileIDs));
     }
 
-    static void addMatchedEdges(Int2ObjectMap<ObjectSet<Edge>> id2EdgesMap, Int2IntOpenHashMap solution,
+    static void addMatchedEdges(Int2ObjectMap<Byte2ObjectMap<Edge>> id2EdgesMap, Int2IntOpenHashMap solution,
                                 ReferenceSet<Edge> matchedEdges, int neighborPos, byte requiredEdgeOrientation) {
         var neighborTileID = solution.get(neighborPos);
         var neighborTile   = id2EdgesMap.get(neighborTileID);
@@ -196,20 +291,27 @@ public final class Day20b {
         }
     }
 
-    static Edge findTranslatedEdge(ObjectSet<Edge> neighborTile, byte clockwise) {
+    static Edge findTranslatedEdge(Byte2ObjectMap<Edge> neighborTile, byte clockwise) {
         var counterclockwise = clockwise;
         counterclockwise ^= 1;
-        Edge translatedEdge = null;
-        for (var edge : neighborTile) {
-            var edgeOrientation = edge.edgeOrientation;
-            if (edgeOrientation == clockwise || edgeOrientation == counterclockwise) {
-                translatedEdge = edge.translate();
-                break;
+        final Edge translatedEdge;
+        do {
+            {
+                var clockwiseEdge = neighborTile.get(clockwise);
+                if (clockwiseEdge != null) {
+                    translatedEdge = clockwiseEdge;
+                    break;
+                }
             }
-        }
-        if (translatedEdge == null) {
-            throw new AssertionError();
-        }
+            {
+                var counterclockwiseEdge = neighborTile.get(counterclockwise);
+                if (counterclockwiseEdge != null) {
+                    translatedEdge = counterclockwiseEdge;
+                    break;
+                }
+            }
+            throw new AssertionError("found no translated edge");
+        } while (false);
         return translatedEdge;
     }
 
@@ -248,7 +350,9 @@ public final class Day20b {
         modeStackStack.add(modeSwapStack);
     }
 
-    private static void populateNextMove(Int2ObjectMap<ObjectSet<Edge>> id2EdgesMap, Object2ObjectMap<Edge, IntSet> edge2IdsMap,
+    private static void populateNextMove(Int2ObjectMap<Byte2ObjectMap<Edge>> id2EdgesMap,
+                                         Reference2IntMap<Edge> edge2IdsMap,
+                                         Int2ObjectMap<Edge> edgeMatchingMap,
                                          Int2IntOpenHashMap solution, IntSet usedTiles, IntArrayList modeStack,
                                          ObjectArrayList<AbstractIntList> tileStackStack) {
         // test feasibility of shifts
@@ -256,66 +360,5 @@ public final class Day20b {
         Int2ByteMap
     }
 
-    static Object2ObjectMap<Edge, IntSet> createInverseEdgeMap(Int2ObjectMap<ObjectSet<Edge>> id2EdgesMap) {
-        var inverseEdgeMap = new Object2ObjectOpenHashMap<Edge, IntSet>(id2EdgesMap.size());
-        var idSet          = new IntOpenHashSet(id2EdgesMap.keySet());
-        for (int id : idSet) {
-            var edgeSet         = id2EdgesMap.get(id);
-            var reversedEdgeSet = new ObjectOpenHashSet<Edge>(edgeSet.size());
-            for (var edge : edgeSet) {
-                reversedEdgeSet.add(edge.reverse());
-                inverseEdgeMap.computeIfAbsent(edge, $ -> new IntArraySet(1)).add(id);
-            }
-            id2EdgesMap.put(~id, reversedEdgeSet);
-            for (var edge : reversedEdgeSet) {
-                inverseEdgeMap.computeIfAbsent(edge, $ -> new IntArraySet(1)).add(id + (1 << Short.SIZE));
-            }
-        }
-        inverseEdgeMap.trim();
-        return inverseEdgeMap;
-    }
-
-    static Int2ObjectMap<ObjectSet<Edge>> findEdges(Int2ObjectMap<String> id2TileStringMap) {
-        Int2ObjectMap<ObjectSet<Edge>> idEdgeMap = new Int2ObjectOpenHashMap<>(id2TileStringMap.size());
-        for (var entry : id2TileStringMap.int2ObjectEntrySet()) {
-            var edgeSet         = new ObjectOpenHashSet<Edge>(4);
-            var id              = entry.getIntKey();
-            var tileString      = entry.getValue();
-            var tileLines       = TILE_LINE.split(tileString);
-            var topEdge         = new Edge(tileLines[0], Edge.EdgeOrientation.COUNTERCLOCKWISE_UP);
-            var bottomEdge      = new Edge(tileLines[9], Edge.EdgeOrientation.CLOCKWISE_DOWN);
-            var leftEdgeString  = new StringBuilder(10);
-            var rightEdgeString = new StringBuilder(10);
-            for (var i = 9; i >= 0; --i) {
-                var line  = tileLines[i];
-                var left  = line.charAt(0);
-                var right = line.charAt(9);
-                leftEdgeString.append(left);
-                rightEdgeString.append(right);
-            }
-            var leftEdge  = new Edge(leftEdgeString.toString(), Edge.EdgeOrientation.CLOCKWISE_LEFT);
-            var rightEdge = new Edge(rightEdgeString.toString(), Edge.EdgeOrientation.COUNTERCLOCKWISE_RIGHT);
-            edgeSet.add(leftEdge);
-            edgeSet.add(rightEdge);
-            edgeSet.add(topEdge);
-            edgeSet.add(bottomEdge);
-            edgeSet.trim();
-            idEdgeMap.put(id, edgeSet);
-        }
-        return idEdgeMap;
-    }
-
-    static Int2ObjectMap<String> parseInput(String input) {
-        var idTileStrings = LINES.split(input);
-        var map           = new Int2ObjectOpenHashMap<String>(idTileStrings.length);
-        for (String idTileString : idTileStrings) {
-            var lines      = TILE_LINE.split(idTileString, 2);
-            var idString   = lines[0];
-            var id         = Integer.parseInt(idString.substring(5));
-            var tileString = lines[1];
-            map.put(id, tileString);
-        }
-        return map;
-    }
 
 }

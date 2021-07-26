@@ -8,9 +8,9 @@ public final class Edge {
      * These objects are lazily initialized.
      */
     /***/
-    Edge         reversed;
-    Edge         translated;
-    Edge         rotated;
+    private Edge reversed;
+    private Edge translated;
+    private Edge rotated;
 
     public Edge(String edgeStr, byte edgeOrientation) {
         this.edgeStr = edgeStr;

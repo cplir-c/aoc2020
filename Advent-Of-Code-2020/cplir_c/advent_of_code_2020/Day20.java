@@ -166,6 +166,14 @@ public class Day20 {
         return lower;
     }
 
+    static {
+        assert sqrt(0) == 0;
+        assert sqrt(1) == 1;
+        assert sqrt(2) == 1;
+        assert sqrt(3) == 1;
+        assert sqrt(4) == 2;
+    }
+
     static Short2ObjectMap<Tile> parseTiles(String input) {
         input = input.replace('.', '0').replace('#', '1');
         var                   tileStrings = LINES.split(input);
