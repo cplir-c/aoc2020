@@ -3,7 +3,7 @@ package cplir_c.advent_of_code_2020.day20c;
 import java.util.regex.Pattern;
 
 
-public class StaticTile {
+public class StaticTile implements TileSquare {
     static final Pattern LINE  = Pattern.compile("\n+");
     private final String         right;
     private final String         up;
@@ -26,23 +26,32 @@ public class StaticTile {
         this.right = rightSB.toString();
     }
 
+    @Override
+    public
     String right() {
         return this.right;
     }
 
+    @Override
+    public
     String up() {
         return this.up;
     }
 
+    @Override
+    public
     String left() {
         return this.left;
     }
 
+    @Override
+    public
     String down() {
         return this.down;
     }
 
-    String body() {
+    @Override
+    public String body() {
         return this.body;
     }
 
@@ -56,5 +65,15 @@ public class StaticTile {
     @Override
     public int hashCode() {
         return this.body.hashCode();
+    }
+
+    @Override
+    public int tilesWide() {
+        return 1;
+    }
+
+    @Override
+    public int tilesTall() {
+        return 1;
     }
 }

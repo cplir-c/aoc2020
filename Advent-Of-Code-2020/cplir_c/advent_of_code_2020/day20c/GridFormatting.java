@@ -148,4 +148,5 @@ public final class GridFormatting {
         }
         return rowHeights;
     }
+
 }
