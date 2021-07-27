@@ -3,13 +3,13 @@ package cplir_c.advent_of_code_2020.day20c;
 import java.util.regex.Matcher;
 
 
-public class TwoPowerTileSquare<S extends TileSquare> extends AbstractCachedTileSquare {
+public class CompositeTileSquare<S extends TileSquare> extends AbstractCachedTileSquare {
     protected final S upperLeft;
     protected final S upperRight;
     protected final S lowerLeft;
     protected final S lowerRight;
 
-    public TwoPowerTileSquare(S upperLeft, S upperRight, S lowerLeft, S lowerRight) {
+    public CompositeTileSquare(S upperLeft, S upperRight, S lowerLeft, S lowerRight) {
         this.upperLeft  = upperLeft;
         this.upperRight = upperRight;
         this.lowerLeft  = lowerLeft;
@@ -51,22 +51,16 @@ public class TwoPowerTileSquare<S extends TileSquare> extends AbstractCachedTile
     @Override
     protected String getBody() {
         var sb = new StringBuilder(this.upperLeft.body().length() * 4);
-        {
-            var upperLeftBody   = this.upperLeft.body();
-            var upperRightBody  = this.upperRight.body();
-            var upperLeftLines  = StaticTile.LINE.matcher(upperLeftBody);
-            var upperRightLines = StaticTile.LINE.matcher(upperRightBody);
-            writeByLinesJoined(sb, upperLeftLines, upperRightLines);
-        }
+        CompositeTileSquare.writeByLinesJoined(sb, this.upperLeft.body(), this.upperRight.body());
         sb.append('\n');
-        {
-            var lowerLeftBody   = this.lowerLeft.body();
-            var lowerRightBody  = this.lowerRight.body();
-            var lowerLeftLines  = StaticTile.LINE.matcher(lowerLeftBody);
-            var lowerRightLines = StaticTile.LINE.matcher(lowerRightBody);
-            writeByLinesJoined(sb, lowerLeftLines, lowerRightLines);
-        }
+        CompositeTileSquare.writeByLinesJoined(sb, this.lowerLeft.body(), this.lowerRight.body());
         return sb.toString();
+    }
+
+    protected static final void writeByLinesJoined(StringBuilder sb, String leftBody, String rightBody) {
+        var leftLines  = StaticTile.LINE.matcher(leftBody);
+        var rightLines = StaticTile.LINE.matcher(rightBody);
+        writeByLinesJoined(sb, leftLines, rightLines);
     }
 
     protected static final void writeByLinesJoined(StringBuilder sb, Matcher leftLines, Matcher rightLines) {

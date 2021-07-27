@@ -39,8 +39,12 @@ public class TileSet implements ObjectSet<RegisteredTile> {
     public boolean add(RegisteredTile tile) {
         var tileID = tile.tileID;
         if (tile.equals(this.allTiles[tileID])) {
-            this.containedTiles.set(tileID);
-            return true;
+            if (this.containedTiles.get(tileID)) {
+                return false;
+            } else {
+                this.containedTiles.set(tileID);
+                return true;
+            }
         }
         return false;
     }
@@ -52,14 +56,14 @@ public class TileSet implements ObjectSet<RegisteredTile> {
                 return false;
             }
             this.containedTiles.or(ts.containedTiles);
+            return true;
         } else {
+            var changed = false;
             for (RegisteredTile tile : tiles) {
-                if (!this.add(tile)) {
-                    return false;
-                }
+                changed |= this.add(tile);
             }
+            return changed;
         }
-        return true;
     }
 
     @Override
