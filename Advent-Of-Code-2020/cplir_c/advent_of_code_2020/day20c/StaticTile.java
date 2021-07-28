@@ -20,7 +20,7 @@ public class StaticTile implements TileSquare {
         this.down = lines[lines.length - 1];
         for (var row : lines) {
             leftSB.append(row.charAt(0));
-            rightSB.append(row.charAt(row.length()));
+            rightSB.append(row.charAt(row.length() - 1));
         }
         this.left  = leftSB.toString();
         this.right = rightSB.toString();

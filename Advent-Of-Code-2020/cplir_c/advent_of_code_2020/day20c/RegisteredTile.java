@@ -10,17 +10,18 @@ public class RegisteredTile extends StaticTile implements RegisteredTileSquare {
 
     final int problemTileID;
     final int tileID;
-    private TileSet usedTiles;
-    private TileSet unusedTiles;
+    private TileSet<RegisteredTile> usedTiles;
+    private TileSet<RegisteredTile> unusedTiles;
 
     public RegisteredTile(String tileString, Set<RegisteredTile> tiles) {
         super(tileString.substring(tileString.indexOf('\n') + 1));
-        var tileHeader = tileString.substring(0, tileString.indexOf('\n'));
-        var idMatcher  = TILE_ID.matcher(tileString);
+        var tileHeader = tileString.substring(5, tileString.indexOf('\n'));
+        var idMatcher  = TILE_ID.matcher(tileHeader);
         if (idMatcher.lookingAt()) {
             var tileIDString = idMatcher.group();
             this.problemTileID = Integer.parseInt(tileIDString);
         } else {
+            System.err.println(tileString);
             throw new AssertionError();
         }
         this.tileID = tiles.size();
@@ -33,21 +34,37 @@ public class RegisteredTile extends StaticTile implements RegisteredTileSquare {
         }
     }
     @Override
-    public TileSet usedTiles(TileSet allTiles) {
+    public TileSet<RegisteredTile> usedTiles(TileSet<RegisteredTile> allTiles) {
         if (this.usedTiles == null) {
-            this.usedTiles = new TileSet(allTiles);
+            this.usedTiles = new TileSet<>(allTiles);
             this.usedTiles.clear();
             this.usedTiles.add(this);
         }
         return this.usedTiles;
     }
     @Override
-    public TileSet unusedTiles(TileSet allTiles) {
+    public TileSet<RegisteredTile> unusedTiles(TileSet<RegisteredTile> allTiles) {
         if (this.unusedTiles == null) {
-            this.unusedTiles = new TileSet(allTiles);
+            this.unusedTiles = new TileSet<>(allTiles);
             this.unusedTiles.remove(this);
         }
         return this.unusedTiles;
+    }
+    @Override
+    public RegisteredTile upperRightTile() {
+        return this;
+    }
+    @Override
+    public RegisteredTile upperLeftTile() {
+        return this;
+    }
+    @Override
+    public RegisteredTile lowerLeftTile() {
+        return this;
+    }
+    @Override
+    public RegisteredTile lowerRightTile() {
+        return this;
     }
 
 }

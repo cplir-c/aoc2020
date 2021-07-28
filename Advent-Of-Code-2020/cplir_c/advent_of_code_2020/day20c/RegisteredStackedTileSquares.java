@@ -47,4 +47,24 @@ public class RegisteredStackedTileSquares<S extends RegisteredTileSquare> extend
         return this.unusedTiles;
     }
 
+    @Override
+    public RegisteredTile upperRightTile() {
+        return this.top.upperRightTile();
+    }
+
+    @Override
+    public RegisteredTile upperLeftTile() {
+        return this.top.upperLeftTile();
+    }
+
+    @Override
+    public RegisteredTile lowerLeftTile() {
+        return this.bottom.lowerLeftTile();
+    }
+
+    @Override
+    public RegisteredTile lowerRightTile() {
+        return this.bottom.lowerRightTile();
+    }
+
 }

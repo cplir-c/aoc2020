@@ -10,33 +10,35 @@ import java.util.Set;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 
-public class TileSet implements ObjectSet<RegisteredTile> {
-    protected final RegisteredTile[] allTiles;
+
+public class TileSet<R extends RegisteredTile> implements ObjectSet<R> {
+    protected final R[]    allTiles;
     protected final BitSet           containedTiles;
 
-    public TileSet(RegisteredTile[] allTiles) {
+    public TileSet(R[] allTiles) {
         this.allTiles = allTiles;
         this.containedTiles = new BitSet(allTiles.length);
         this.containedTiles.set(0, allTiles.length);
     }
-    public TileSet(Set<RegisteredTile> toCopy) {
-        if (toCopy instanceof TileSet ts) {
+    @SuppressWarnings("unchecked")
+    public TileSet(Set<R> toCopy) {
+        if (toCopy instanceof TileSet<R> ts) {
             this.allTiles       = ts.allTiles;
             this.containedTiles = (BitSet) ts.containedTiles.clone();
         } else {
-            this.allTiles = toCopy.toArray(new RegisteredTile[toCopy.size()]);
+            this.allTiles       = (R[]) toCopy.toArray(new RegisteredTile[toCopy.size()]);
             this.containedTiles = new BitSet(this.allTiles.length);
             this.containedTiles.set(0, this.allTiles.length);
         }
     }
-    protected TileSet(RegisteredTile[] allTiles, BitSet containedTiles) {
+    protected TileSet(R[] allTiles, BitSet containedTiles) {
         this.allTiles       = allTiles;
         this.containedTiles = containedTiles;
     }
 
 
     @Override
-    public boolean add(RegisteredTile tile) {
+    public boolean add(R tile) {
         var tileID = tile.tileID;
         if (tile.equals(this.allTiles[tileID])) {
             if (this.containedTiles.get(tileID)) {
@@ -50,8 +52,8 @@ public class TileSet implements ObjectSet<RegisteredTile> {
     }
 
     @Override
-    public boolean addAll(Collection<? extends RegisteredTile> tiles) {
-        if (tiles instanceof TileSet ts) {
+    public boolean addAll(Collection<? extends R> tiles) {
+        if (tiles instanceof TileSet<? extends R> ts) {
             if (ts.allTiles != this.allTiles && !Arrays.equals(ts.allTiles, this.allTiles)) {
                 return false;
             }
@@ -59,7 +61,7 @@ public class TileSet implements ObjectSet<RegisteredTile> {
             return true;
         } else {
             var changed = false;
-            for (RegisteredTile tile : tiles) {
+            for (R tile : tiles) {
                 changed |= this.add(tile);
             }
             return changed;
@@ -166,7 +168,7 @@ public class TileSet implements ObjectSet<RegisteredTile> {
     }
     @Override
     public boolean retainAll(Collection<?> tiles) {
-        if (tiles instanceof TileSet ts) {
+        if (tiles instanceof TileSet<?> ts) {
             if (ts.allTiles != this.allTiles && !Arrays.equals(ts.allTiles, this.allTiles)) {
                 return this.regularRetainAll(tiles);
             }
@@ -174,7 +176,7 @@ public class TileSet implements ObjectSet<RegisteredTile> {
         }
         return this.regularRetainAll(tiles);
     }
-    private boolean sameAllTilesRetainAll(TileSet ts) {
+    private boolean sameAllTilesRetainAll(TileSet<?> ts) {
         if (!ts.containedTiles.intersects(this.containedTiles)) {
             if (this.isEmpty()) {
                 return false;
@@ -263,11 +265,11 @@ public class TileSet implements ObjectSet<RegisteredTile> {
     }
 
     @Override
-    public ObjectIterator<RegisteredTile> iterator() {
+    public ObjectIterator<R> iterator() {
         return new SkippingTileSetIterator();
     }
 
-    private class SkippingTileSetIterator implements ObjectIterator<RegisteredTile> {
+    private class SkippingTileSetIterator implements ObjectIterator<R> {
         int currentPosition = -1;
         int nextPosition    = this.fetchNextPosition();
 
@@ -281,7 +283,7 @@ public class TileSet implements ObjectSet<RegisteredTile> {
         }
 
         @Override
-        public RegisteredTile next() {
+        public R next() {
             this.currentPosition = this.nextPosition;
             var tiles = TileSet.this.allTiles;
             if (this.currentPosition >= tiles.length) {
