@@ -14,7 +14,7 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 public final class TileProblem {
     private static final Pattern DOUBLE_LINES = Pattern.compile("\n{2,}");
-    private final TileSet allTiles;
+    final TileSet                                            allTiles;
     final Int2ObjectMap<AssemblyLayer<RegisteredTileSquare>> tileAssemblies;
     final IntList                                            assemblyLayerAssemblyOrderStack;
     final IntSet                                             queuedAssemblyLayerSizes;
