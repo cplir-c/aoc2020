@@ -83,5 +83,4 @@ public class OrientedRegisteredSquare<S extends RegisteredTileSquare> extends Or
         };
     }
 
-
 }

@@ -8,20 +8,20 @@ public class RegisteredStackedTileSquares<S extends RegisteredTileSquare> extend
         this.unusedTiles = null;
     }
 
-    protected TileSet usedTiles;
-    protected TileSet unusedTiles;
+    protected TileSet<RegisteredTile> usedTiles;
+    protected TileSet<RegisteredTile> unusedTiles;
 
     @Override
-    public TileSet usedTiles(TileSet allTiles) {
+    public TileSet<RegisteredTile> usedTiles(TileSet<RegisteredTile> allTiles) {
         if (this.usedTiles == null) {
-            TileSet used;
+            TileSet<RegisteredTile> used;
             if (this.unusedTiles != null) {
-                used = new TileSet(allTiles);
+                used = new TileSet<>(allTiles);
                 used.removeAll(this.unusedTiles);
             } else {
                 var topTiles    = this.top.usedTiles(allTiles);
                 var bottomTiles = this.bottom.usedTiles(allTiles);
-                used = new TileSet(topTiles);
+                used = new TileSet<>(topTiles);
                 used.addAll(bottomTiles);
             }
             this.usedTiles = used;
@@ -30,16 +30,16 @@ public class RegisteredStackedTileSquares<S extends RegisteredTileSquare> extend
     }
 
     @Override
-    public TileSet unusedTiles(TileSet allTiles) {
+    public TileSet<RegisteredTile> unusedTiles(TileSet<RegisteredTile> allTiles) {
         if (this.unusedTiles == null) {
-            TileSet unused;
+            TileSet<RegisteredTile> unused;
             if (this.unusedTiles != null) {
-                unused = new TileSet(allTiles);
+                unused = new TileSet<>(allTiles);
                 unused.removeAll(this.usedTiles);
             } else {
                 var topTiles    = this.top.unusedTiles(allTiles);
                 var bottomTiles = this.bottom.unusedTiles(allTiles);
-                unused = new TileSet(topTiles);
+                unused = new TileSet<>(topTiles);
                 unused.retainAll(bottomTiles);
             }
             this.unusedTiles = unused;

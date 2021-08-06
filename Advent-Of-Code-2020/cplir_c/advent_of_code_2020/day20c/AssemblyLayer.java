@@ -1,7 +1,10 @@
 package cplir_c.advent_of_code_2020.day20c;
 
 import java.util.function.Function;
+import java.util.function.IntFunction;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -10,14 +13,18 @@ import it.unimi.dsi.fastutil.objects.ObjectSet;
 
 public class AssemblyLayer {
 
-    private static final Function<? super Object, ObjectSet<? extends RegisteredTileSquare>>   REGISTERED_SQUARE_SET_SUPPLIER
+    private static final Function<? super Object, ObjectSet<RegisteredTileSquare>>             REGISTERED_SQUARE_SET_SUPPLIER
+                                                                                                                              = ignore -> new ObjectOpenHashSet<>(
+            Integer.BYTES
+        );
+    private static final IntFunction<ObjectSet<RegisteredTileSquare>>                          INT_SET_SUPPLIER
                                                                                                                               = ignore -> new ObjectOpenHashSet<>(
             Integer.BYTES
         );
     int                                                                                        tilesWide;
     int                                                                                        tilesTall;
     final Object2ObjectMap<TileSet<RegisteredTile>, ObjectSet<? extends RegisteredTileSquare>> unrotatedAssemblies;
-    final Object2ObjectMap<TileSet<RegisteredTile>, ObjectSet<RegisteredTileSquare>>           rotatedAssemblies;
+    final Int2ObjectMap<ObjectSet<RegisteredTileSquare>>                                       rotatedAssemblies;
     final Object2ObjectMap<String, ObjectSet<RegisteredTileSquare>>                            assembliesByRight;
     final Object2ObjectMap<String, ObjectSet<RegisteredTileSquare>>                            assembliesByUp;
     final Object2ObjectMap<String, ObjectSet<RegisteredTileSquare>>                            assembliesByLeft;
@@ -26,6 +33,13 @@ public class AssemblyLayer {
     private AssemblyLayer(int tilesWide, int tilesTall,
                           Object2ObjectMap<TileSet<RegisteredTile>,
                                            ObjectSet<? extends RegisteredTileSquare>> unrotatedAssemblies) {
+        for (var set : unrotatedAssemblies.values()) {
+            for (var assembly : set) {
+                if (assembly.body() == null) {
+                    throw new AssertionError();
+                }
+            }
+        }
         this.tilesWide           = tilesWide;
         this.tilesTall           = tilesTall;
         this.unrotatedAssemblies = unrotatedAssemblies;
@@ -35,6 +49,7 @@ public class AssemblyLayer {
         this.assembliesByLeft    = new Object2ObjectOpenHashMap<>(this.rotatedAssemblies.size());
         this.assembliesByDown    = new Object2ObjectOpenHashMap<>(this.rotatedAssemblies.size());
         this.indexTileAssembliesByEdge();
+        System.out.println("assembled " + this.tilesWide + " by " + this.tilesTall + " layer");
     }
     public static AssemblyLayer assembleAssemblyLayer(TileProblem problem, int dimensions) {
         var tilesWide           = dimensions >>> Short.SIZE;
@@ -46,28 +61,27 @@ public class AssemblyLayer {
         return new AssemblyLayer(tilesWide, tilesTall, unrotatedAssemblies);
     }
 
-    private static Object2ObjectMap<TileSet<RegisteredTile>, ObjectSet<RegisteredTileSquare>>
+    private static Int2ObjectMap<ObjectSet<RegisteredTileSquare>>
         rotateAssemblies(Object2ObjectMap<TileSet<RegisteredTile>,
-                                          ObjectSet<? extends RegisteredTileSquare>> unrotatedAssemblies2) {
-        var rotatedAssemblies = new Object2ObjectOpenHashMap<TileSet<RegisteredTile>, ObjectSet<RegisteredTileSquare>>(
-            unrotatedAssemblies2.size()
-        );
-        for (var assemblySetAndTiles : unrotatedAssemblies2.object2ObjectEntrySet()) {
-            var tileSet            = assemblySetAndTiles.getKey();
-            var rotatedAssemblySet = new ObjectOpenHashSet<RegisteredTileSquare>(assemblySetAndTiles.getValue().size() * 8);
-            for (var assembly : assemblySetAndTiles.getValue()) {
-                for (byte orientation = 0; orientation <= 7; ++orientation) {
+                                          ObjectSet<? extends RegisteredTileSquare>> unrotatedAssemblies) {
+        Int2ObjectMap<ObjectSet<RegisteredTileSquare>> rotatedAssemblies
+            = new Int2ObjectOpenHashMap<>(unrotatedAssemblies.size());
+        for (var assemblySet : unrotatedAssemblies.values()) {
+            var assemblySetSize = assemblySet.size();
+            if (assemblySetSize == 0) {
+                throw new AssertionError();
+            }
+            for (var assembly : assemblySet) {
+                for (byte orientation = 0; orientation <= 0x7; ++orientation) {
                     var rotatedAssembly = new OrientedRegisteredSquare<>(assembly, orientation);
-                    rotatedAssemblySet.add(rotatedAssembly);
+                    rotatedAssemblies.computeIfAbsent(rotatedAssembly.tilesTall(), INT_SET_SUPPLIER).add(rotatedAssembly);
                 }
             }
-            rotatedAssemblies.put(tileSet, rotatedAssemblySet);
         }
         return rotatedAssemblies;
     }
-    @SuppressWarnings("unchecked")
     private final void indexTileAssembliesByEdge() {
-        var setSupplier = (Function<? super String, ? extends ObjectSet<RegisteredTileSquare>>) REGISTERED_SQUARE_SET_SUPPLIER;
+        var setSupplier = REGISTERED_SQUARE_SET_SUPPLIER;
         for (var assemblySet : this.rotatedAssemblies.values()) {
             for (var tileSquare : assemblySet) {
                 var right = tileSquare.right();
@@ -89,44 +103,70 @@ public class AssemblyLayer {
             throw new IllegalArgumentException();
         }
         if (tilesTall == 1 && tilesWide == 1) {
-            return packageTileSet(problem.allTiles);
+            return packageTileSet(problem.allTiles());
         }
 
         var topTilesTall    = tilesTall >> 1;
         var bottomTilesTall = tilesTall - topTilesTall;
 
-        var topDimensions    = packDimensionsForLookup(tilesWide, topTilesTall);
-        var bottomDimensions = packDimensionsForLookup(tilesWide, bottomTilesTall);
+        var topDimensions    = TileProblem.packDimensionsForLookup(tilesWide, topTilesTall);
+        var bottomDimensions = TileProblem.packDimensionsForLookup(tilesWide, bottomTilesTall);
 
-        var topAssemblyLayer    = problem.tileAssemblies.get(topDimensions);
-        var bottomAssemblyLayer = problem.tileAssemblies.get(bottomDimensions);
+        var topAssemblyLayer    = problem.lookupAssemblyLayer(topDimensions);
+        var bottomAssemblyLayer = problem.lookupAssemblyLayer(bottomDimensions);
 
         if (topAssemblyLayer == null || bottomAssemblyLayer == null) {
+
             queueUnqueuedAssemblyLayerDimensions(
                 problem, topDimensions, bottomDimensions, topAssemblyLayer, bottomAssemblyLayer
             );
             return null;
         }
 
+        return stackRotatedAssemblies(problem, tilesWide, topTilesTall, bottomTilesTall, topAssemblyLayer, bottomAssemblyLayer);
+    }
+    @SuppressWarnings("unchecked")
+    private static Object2ObjectMap<TileSet<RegisteredTile>, ObjectSet<? extends RegisteredTileSquare>>
+        stackRotatedAssemblies(TileProblem problem, int tilesWide, int topTilesTall, int bottomTilesTall,
+                               AssemblyLayer topAssemblyLayer, AssemblyLayer bottomAssemblyLayer)
+                throws AssertionError {
         Object2ObjectMap<TileSet<RegisteredTile>, ObjectSet<? extends RegisteredTileSquare>> assemblies
             = new Object2ObjectOpenHashMap<>();
 
+        var setSupplier
+            = (Function<? super TileSet<RegisteredTile>,
+                        ? extends ObjectSet<RegisteredStackedTileSquares<RegisteredTileSquare>>>) REGISTERED_SQUARE_SET_SUPPLIER;
         // have both assembly layers
-        for (var topAssemblySet : topAssemblyLayer.rotatedAssemblies.values()) {
-            for (var topAssembly : topAssemblySet) {
-                if (topAssembly.tilesTall() != topTilesTall || topAssembly.tilesWide() != tilesWide) {
-                    continue;
-                }
-                var topDown           = topAssembly.down();
-                var bottomAssemblySet = bottomAssemblyLayer.assembliesByUp.get(topDown);
-                if (bottomAssemblySet == null) {
-                    continue;
-                }
-                var topUsedTiles = topAssembly.usedTiles(problem.allTiles);
-                addPossibleBottomAssemblies(
-                    problem, tilesWide, bottomTilesTall, assemblies, topAssembly, bottomAssemblySet, topUsedTiles
-                );
+        var topAssemblySet = topAssemblyLayer.rotatedAssemblies.get(topTilesTall);
+        for (var topAssembly : topAssemblySet) {
+            if (topAssembly.tilesTall() != topTilesTall || topAssembly.tilesWide() != tilesWide) {
+                throw new AssertionError();
             }
+            var topDown           = topAssembly.down();
+            var bottomAssemblySet = bottomAssemblyLayer.assembliesByUp.get(topDown);
+            if (bottomAssemblySet == null) {
+                continue;
+            }
+
+            var topUsedTiles = topAssembly.usedTiles(problem.allTiles());
+            for (var bottomAssembly : bottomAssemblySet) {
+                if (bottomAssembly.tilesTall() != bottomTilesTall) {
+                    // skip to the next assembly
+                } else if (bottomAssembly.tilesWide() != tilesWide) {
+                    throw new AssertionError("if tiles tall matches, tiles wide should match too, from the dimension int.");
+                } else if (!bottomAssembly.unusedTiles(problem.allTiles()).containsAll(topUsedTiles)) {
+                    System.out.println("fail 3");
+                } else {
+                    @SuppressWarnings("rawtypes")
+                    var assembly  = new RegisteredStackedTileSquares(topAssembly, bottomAssembly);
+                    var tilesUsed = assembly.usedTiles(problem.allTiles());
+                    assemblies.computeIfAbsent(tilesUsed, setSupplier).add(assembly);
+                }
+            }
+        }
+        if (assemblies.isEmpty()) {
+            System.err.println(topAssemblyLayer);
+            throw new IllegalStateException();
         }
         return assemblies;
     }
@@ -137,59 +177,21 @@ public class AssemblyLayer {
         for (RegisteredTile tile : allTiles) {
             var set = new TileSet<>(allTiles);
             set.clear();
-            set.add(tile);
+            if (!set.add(tile)) {
+                throw new AssertionError();
+            }
             packagedTileSet.put(set, set);
         }
         return packagedTileSet;
     }
-    private static int packDimensionsForLookup(int tilesWide, int tilesTall) {
-        if (tilesWide > tilesTall) {
-            return (tilesTall << Short.SIZE) | tilesWide;
-        } else {
-            return (tilesWide << Short.SIZE) | tilesTall;
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void addPossibleBottomAssemblies(TileProblem problem, int tilesWide, int bottomTilesTall,
-                                                    Object2ObjectMap<TileSet<RegisteredTile>,
-                                                                     ObjectSet<? extends RegisteredTileSquare>> assemblies,
-                                                    RegisteredTileSquare topAssembly,
-                                                    ObjectSet<RegisteredTileSquare> bottomAssemblySet,
-                                                    TileSet<RegisteredTile> topUsedTiles) {
-        var setSupplier
-            = (Function<? super TileSet<RegisteredTile>,
-                        ? extends ObjectSet<RegisteredStackedTileSquares<RegisteredTile>>>) REGISTERED_SQUARE_SET_SUPPLIER;
-        for (var bottomAssembly : bottomAssemblySet) {
-            if (bottomAssembly.tilesTall() != bottomTilesTall || bottomAssembly.tilesWide() != tilesWide
-                || !bottomAssembly.unusedTiles(problem.allTiles).containsAll(topUsedTiles)) {
-                continue;
-            }
-            var assembly  = new RegisteredStackedTileSquares<>(topAssembly, bottomAssembly);
-            var tilesUsed = assembly.usedTiles(problem.allTiles);
-            assemblies.computeIfAbsent(tilesUsed, setSupplier);
-        }
-    }
-
     private static void queueUnqueuedAssemblyLayerDimensions(TileProblem problem, int topDimensions, int bottomDimensions,
                                                              AssemblyLayer topAssemblyLayer,
                                                              AssemblyLayer bottomAssemblyLayer) {
-        queueAssemblyLayerDimension(problem, bottomDimensions, bottomAssemblyLayer);
-        queueAssemblyLayerDimension(problem, topDimensions, topAssemblyLayer);
+        problem.queueAssemblyLayerDimension(bottomDimensions, bottomAssemblyLayer);
+        problem.queueAssemblyLayerDimension(topDimensions, topAssemblyLayer);
     }
-    private static void queueAssemblyLayerDimension(TileProblem problem, int dimensions,
-                                                    AssemblyLayer assemblyLayer) {
-        if (assemblyLayer == null && problem.queuedAssemblyLayerSizes.add(dimensions)) {
-            if (dimensions <= 1) {
-                throw new AssertionError();
-            }
-            problem.assemblyLayerAssemblyOrderStack.add(dimensions);
-        } else {
-            if (dimensions != problem.assemblyLayerAssemblyOrderStack.peekInt(0)) {
-                problem.assemblyLayerAssemblyOrderStack.rem(dimensions);
-                problem.assemblyLayerAssemblyOrderStack.add(dimensions);
-            }
-        }
+    @Override
+    public String toString() {
+        return this.unrotatedAssemblies.toString();
     }
-
 }

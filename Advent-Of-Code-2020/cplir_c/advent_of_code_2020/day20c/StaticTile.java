@@ -13,9 +13,9 @@ public class StaticTile implements TileSquare {
 
     public StaticTile(String body) {
         this.body = body;
-        var leftSB  = new StringBuilder(10);
-        var rightSB = new StringBuilder(10);
         var lines = LINE.split(body);
+        var leftSB  = new StringBuilder(lines.length);
+        var rightSB = new StringBuilder(lines.length);
         this.up   = lines[0];
         this.down = lines[lines.length - 1];
         for (var row : lines) {

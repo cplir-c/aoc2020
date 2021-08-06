@@ -7,16 +7,25 @@ import java.util.Collection;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+import it.unimi.dsi.fastutil.objects.AbstractObjectSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrays;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 
 
-public class TileSet<R extends RegisteredTile> implements ObjectSet<R> {
+public class TileSet<R extends RegisteredTile> extends AbstractObjectSet<R> implements ObjectSet<R> {
     protected final R[]    allTiles;
     protected final BitSet           containedTiles;
 
     public TileSet(R[] allTiles) {
         this.allTiles = allTiles;
+        for (var obj : allTiles) {
+            if (obj == null) {
+                throw new AssertionError();
+            }
+        }
+        ObjectArrays.unstableSort(this.allTiles, (a, b) -> Integer.compare(a.tileID, b.tileID));
+
         this.containedTiles = new BitSet(allTiles.length);
         this.containedTiles.set(0, allTiles.length);
     }
@@ -27,6 +36,7 @@ public class TileSet<R extends RegisteredTile> implements ObjectSet<R> {
             this.containedTiles = (BitSet) ts.containedTiles.clone();
         } else {
             this.allTiles       = (R[]) toCopy.toArray(new RegisteredTile[toCopy.size()]);
+            ObjectArrays.unstableSort(this.allTiles, (a, b) -> Integer.compare(a.tileID, b.tileID));
             this.containedTiles = new BitSet(this.allTiles.length);
             this.containedTiles.set(0, this.allTiles.length);
         }
@@ -83,7 +93,7 @@ public class TileSet<R extends RegisteredTile> implements ObjectSet<R> {
         if (tiles.size() > this.size()) {
             return false;
         }
-        if (tiles instanceof TileSet ts) {
+        if (tiles instanceof TileSet<?> ts) {
             if (ts.allTiles != this.allTiles && !Arrays.equals(ts.allTiles, this.allTiles)) {
                 return this.regularContainsAll(tiles);
             }
@@ -91,13 +101,24 @@ public class TileSet<R extends RegisteredTile> implements ObjectSet<R> {
         }
         return this.regularContainsAll(tiles);
     }
-    private boolean sameAllTilesContainsAll(TileSet ts) {
+    private boolean sameAllTilesContainsAll(TileSet<? extends RegisteredTile> ts) {
         if (!ts.containedTiles.intersects(this.containedTiles)) {
             return false;
         }
-        for (var bitIndex = ts.containedTiles.nextSetBit(0); bitIndex >= 0; ts.containedTiles.nextSetBit(bitIndex + 1)) {
-            if (!this.containedTiles.get(0)) {
+        var tsSetIndex   = ts.containedTiles.nextSetBit(0);
+        var tsClearIndex = ts.containedTiles.nextClearBit(tsSetIndex + 1);
+        for (int setIndex = this.containedTiles.nextSetBit(0), clearIndex = this.containedTiles.nextClearBit(setIndex + 1);
+             clearIndex >= 0 && tsClearIndex >= 0; setIndex = this.containedTiles.nextSetBit(clearIndex + 1), clearIndex
+                 = this.containedTiles.nextSetBit(setIndex + 1)) {
+            if (tsSetIndex < setIndex || tsClearIndex > clearIndex) {
                 return false;
+            }
+            while (tsSetIndex >= setIndex && tsClearIndex <= clearIndex) {
+                tsSetIndex   = ts.containedTiles.nextSetBit(tsClearIndex + 1);
+                tsClearIndex = ts.containedTiles.nextClearBit(tsSetIndex + 1);
+                if (tsSetIndex < 0 || tsClearIndex < 0) {
+                    return true;
+                }
             }
         }
         return true;
@@ -128,7 +149,7 @@ public class TileSet<R extends RegisteredTile> implements ObjectSet<R> {
 
     @Override
     public boolean removeAll(Collection<?> tiles) {
-        if (tiles instanceof TileSet ts) {
+        if (tiles instanceof TileSet<?> ts) {
             if (ts.allTiles != this.allTiles && !Arrays.equals(ts.allTiles, this.allTiles)) {
                 return this.regularRemoveAll(tiles);
             }
@@ -136,16 +157,19 @@ public class TileSet<R extends RegisteredTile> implements ObjectSet<R> {
         }
         return this.regularRemoveAll(tiles);
     }
-    private boolean sameAllTilesRemoveAll(TileSet ts) {
+    private boolean sameAllTilesRemoveAll(TileSet<?> ts) {
         if (!ts.containedTiles.intersects(this.containedTiles)) {
             return false;
         }
         var bitIndex    = 0;
         var bitEndIndex = -1;
         var changed     = false;
-        while (bitIndex >= 0) {
+        while (true) {
             bitIndex    = ts.containedTiles.nextSetBit(bitEndIndex + 1);
             bitEndIndex = ts.containedTiles.nextClearBit(bitIndex + 1);
+            if (bitIndex < 0 || bitEndIndex < 0) {
+                break;
+            }
 
             var innerChanged = false;
             for (var bitI = bitIndex; bitI < bitEndIndex; ++bitI) {
@@ -319,5 +343,37 @@ public class TileSet<R extends RegisteredTile> implements ObjectSet<R> {
             this.nextPosition    = -1;
             return skipped;
         }
+    }
+
+    @Override
+    public String toString() {
+        var sb = new StringBuilder(this.size() * 8 + 2);
+        sb.append('{');
+        for (var bitIndex = this.containedTiles.nextSetBit(0); bitIndex >= 0;
+             bitIndex = this.containedTiles.nextSetBit(bitIndex + 1)) {
+            var objString = this.allTiles[bitIndex].toString();
+            sb.append(objString);
+            sb.append(',');
+            if (objString.contains("\n")) {
+                sb.append('\n');
+            }
+        }
+        sb.append('}');
+        return sb.toString();
+    }
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof TileSet && other.getClass() == TileSet.class) {
+            var ts = (TileSet<?>) other;
+            return this.hashCode() == other.hashCode() && this.allTiles == ts.allTiles
+                && this.containedTiles.equals(ts.containedTiles);
+        } else {
+            return super.equals(other);
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        return this.containedTiles.hashCode() ^ System.identityHashCode(this.allTiles);
     }
 }

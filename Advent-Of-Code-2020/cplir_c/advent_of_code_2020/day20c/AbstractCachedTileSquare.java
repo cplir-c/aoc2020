@@ -14,8 +14,7 @@ abstract class AbstractCachedTileSquare implements TileSquare {
         this.tilesTall = tilesTall;
     }
     protected AbstractCachedTileSquare() {
-        this.tilesWide = -1;
-        this.tilesTall = -1;
+        this(-1, -1);
     }
 
     protected abstract int getTilesTall();
@@ -79,7 +78,26 @@ abstract class AbstractCachedTileSquare implements TileSquare {
     public String body() {
         if (this.body == null) {
             this.body = this.getBody();
+            this.checkSideAssertionsUsingStaticTile();
         }
         return this.body;
+    }
+    public final boolean checkSideAssertionsUsingStaticTile() {
+        var staticTile = new StaticTile(this.body());
+        if (!this.up().equals(staticTile.up())) {
+            throw new AssertionError("up invalid");
+        } else if (!this.down().equals(staticTile.down())) {
+            throw new AssertionError("down invalid");
+        } else if (!this.left().equals(staticTile.left())) {
+            throw new AssertionError("left invalid");
+        } else if (!this.right().equals(staticTile.right())) {
+            throw new AssertionError("right invalid");
+        } else {
+            return true;
+        }
+    }
+    @Override
+    public String toString() {
+        return this.body();
     }
 }

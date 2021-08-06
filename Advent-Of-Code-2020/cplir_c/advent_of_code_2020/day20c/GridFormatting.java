@@ -12,22 +12,26 @@ public final class GridFormatting {
         for (String line : lines) {
             out.append(line.charAt(col));
         }
+        out.append('\n');
     }
 
     static void readLineUp(StringBuilder out, String[] lines, int col) {
         for (var i = lines.length - 1; i > 0; --i) {
             out.append(lines[i].charAt(col));
         }
+        out.append('\n');
     }
 
     static void readLineRight(StringBuilder out, String line) {
         out.append(line);
+        out.append('\n');
     }
 
     static void readLineLeft(StringBuilder out, String line) {
         for (var i = line.length() - 1; i > 0; --i) {
             out.append(line.charAt(i));
         }
+        out.append('\n');
     }
     static int count(char chr, String string) {
         var count = 0;

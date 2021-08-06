@@ -5,6 +5,10 @@ public class StackedTileSquares<S extends TileSquare> extends AbstractCachedTile
     protected final S bottom;
 
     public StackedTileSquares(S top, S bottom) {
+        if (!top.down().equals(bottom.up())) {
+            throw new AssertionError();
+        }
+
         this.top = top;
         this.bottom = bottom;
     }

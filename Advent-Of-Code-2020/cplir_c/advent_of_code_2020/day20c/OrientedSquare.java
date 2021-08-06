@@ -8,6 +8,9 @@ public class OrientedSquare<S extends TileSquare> extends AbstractCachedTileSqua
     public OrientedSquare(S underTile, byte orientation) {
         this.orientation = orientation;
         this.underSquare = underTile;
+        if (this.underSquare == null) {
+            throw new IllegalArgumentException();
+        }
     }
 
     @Override
@@ -135,6 +138,12 @@ public class OrientedSquare<S extends TileSquare> extends AbstractCachedTileSqua
         if (this.orientation == TileOrientation.TOP_UPWARD) {
             return this.underSquare.body();
         }
+        var bodyOut = new StringBuilder(this.underSquare.body().length());
+        if (this.orientation == TileOrientation.BACKWARD_TOP_DOWNWARD) {
+            bodyOut.append(this.underSquare.body());
+            bodyOut.reverse();
+            return bodyOut.toString();
+        }
         var lines  = StaticTile.LINE.split(this.underSquare.body());
         var width  = 0;
         var height = lines.length;
@@ -143,7 +152,7 @@ public class OrientedSquare<S extends TileSquare> extends AbstractCachedTileSqua
                 width = line.length();
             }
         }
-        var bodyOut = new StringBuilder(this.underSquare.body().length());
+
         switch(this.orientation) {
             case TileOrientation.TOP_LEFTWARD:
                 // reading order -> ^\^\^
@@ -152,13 +161,13 @@ public class OrientedSquare<S extends TileSquare> extends AbstractCachedTileSqua
                 }
                 break;
             case TileOrientation.TOP_DOWNWARD:
-                for (var row = height - 1; row > 0; --row) {
+                for (var row = height - 1; row >= 0; --row) {
                     GridFormatting.readLineLeft(bodyOut, lines[row]);
                 }
                 break;
             case TileOrientation.TOP_RIGHTWARD:
                 // reading order v\v\v <-
-                for (var col = width - 1; col > 0; --col) {
+                for (var col = width - 1; col >= 0; --col) {
                     GridFormatting.readLineDown(bodyOut, lines, col);
                 }
                 break;
@@ -173,13 +182,21 @@ public class OrientedSquare<S extends TileSquare> extends AbstractCachedTileSqua
                     GridFormatting.readLineDown(bodyOut, lines, col);
                 }
                 break;
-            case TileOrientation.BACKWARD_TOP_DOWNWARD:
-                bodyOut.append(this.underSquare.body());
-                bodyOut.reverse();
+
+            case TileOrientation.BACKWARD_TOP_RIGHTWARD:
+                // reading order v/v/v <-
+                for (var col = width - 1; col >= 0; --col) {
+                    GridFormatting.readLineUp(bodyOut, lines, col);
+                }
                 break;
             default :
-                assert false;
+                throw new AssertionError();
         }
+        // pop final newline
+        if (bodyOut.length() <= 0) {
+            throw new AssertionError("body should be existant");
+        }
+        bodyOut.setLength(bodyOut.length() - 1);
         return bodyOut.toString();
     }
 

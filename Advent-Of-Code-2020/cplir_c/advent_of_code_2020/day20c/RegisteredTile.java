@@ -66,5 +66,32 @@ public class RegisteredTile extends StaticTile implements RegisteredTileSquare {
     public RegisteredTile lowerRightTile() {
         return this;
     }
-
+    @Override
+    public String toString() {
+        var sb = new StringBuilder(this.body().length() + 12);
+        sb.append("Tile ");
+        sb.append(this.problemTileID);
+        sb.append('#');
+        sb.append(this.tileID);
+        // sb.append('\n');
+        // sb.append(this.body());
+        return sb.toString();
+    }
+    @Override
+    public boolean equals(Object other) {
+        if (other == this) {
+            return true;
+        } else if (other.hashCode() != this.hashCode() || !(other instanceof RegisteredTile)) {
+            return false;
+        } else if (other.getClass() == RegisteredTile.class) {
+            var rt = (RegisteredTile) other;
+            return rt.problemTileID == this.problemTileID && rt.tileID == this.tileID && rt.body().equals(this.body());
+        } else {
+            return other.equals(this);
+        }
+    }
+    @Override
+    public int hashCode() {
+        return ((this.problemTileID << 16) + this.tileID) ^ this.body().hashCode();
+    }
 }
